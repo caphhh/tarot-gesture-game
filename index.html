@@ -1,0 +1,3973 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030304">
+  <title>塔罗占卜</title>
+  <style>
+    :root {
+      --black: #030304;
+      --ink: #0a090d;
+      --gold: #c9a35b;
+      --gold-light: #f1d79a;
+      --gold-dim: rgba(201, 163, 91, .4);
+      --violet: #70429a;
+      --text: #f2e7cd;
+      --muted: #a99c87;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--black);
+    }
+
+    body {
+      color: var(--text);
+      font-family: "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
+      overflow: hidden;
+    }
+
+    button { font: inherit; }
+
+    #particleCanvas {
+      position: fixed;
+      z-index: 110;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .app {
+      position: relative;
+      isolation: isolate;
+      width: 100%;
+      min-height: 100svh;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 62%, rgba(74, 35, 101, .2) 0%, rgba(39, 18, 53, .08) 30%, transparent 62%),
+        linear-gradient(#030304, #050407 72%, #020203);
+    }
+
+    .app::before,
+    .app::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .app::before {
+      inset: 14px;
+      border: 1px solid rgba(201, 163, 91, .38);
+      box-shadow: inset 0 0 0 4px var(--black), inset 0 0 0 5px rgba(201, 163, 91, .12);
+    }
+
+    .app::after {
+      inset: 0;
+      opacity: .35;
+      background-image:
+        radial-gradient(circle at 7% 13%, var(--gold-light) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 17% 42%, #8f68b9 0 1px, transparent 1.5px),
+        radial-gradient(circle at 31% 8%, var(--gold) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 72% 16%, var(--gold) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 84% 36%, #8f68b9 0 1px, transparent 1.5px),
+        radial-gradient(circle at 94% 14%, var(--gold-light) 0 1px, transparent 1.5px);
+      background-size: 310px 250px, 390px 320px, 470px 360px, 420px 300px, 370px 270px, 520px 390px;
+    }
+
+    .corner {
+      position: absolute;
+      z-index: 20;
+      top: 34px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .corner-left { left: 38px; }
+    .corner-right { right: 38px; }
+
+    .utility-button {
+      min-height: 42px;
+      padding: 0 17px;
+      border: 1px solid rgba(201, 163, 91, .48);
+      color: #d8c39a;
+      background: rgba(8, 7, 10, .68);
+      letter-spacing: .08em;
+      cursor: default;
+      transition: border-color .25s ease, color .25s ease, background .25s ease;
+    }
+
+    #controlToggle {
+      cursor: pointer;
+    }
+
+    #controlToggle[data-mode="gesture"] {
+      color: var(--gold-light);
+      border-color: rgba(241, 215, 154, .76);
+      box-shadow: inset 0 0 18px rgba(112, 66, 154, .18), 0 0 14px rgba(112, 66, 154, .14);
+    }
+
+    .utility-button:hover {
+      color: var(--gold-light);
+      border-color: rgba(241, 215, 154, .72);
+      background: rgba(24, 18, 29, .72);
+    }
+
+    .utility-button.is-gesture-hover {
+      color: var(--gold-light);
+      border-color: rgba(241, 215, 154, .82);
+      background: rgba(24, 18, 29, .78);
+      box-shadow: 0 0 22px rgba(241, 215, 154, .2), 0 0 30px rgba(112, 66, 154, .2);
+    }
+
+    .utility-button svg {
+      width: 15px;
+      margin-right: 8px;
+      vertical-align: -2px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      align-items: center;
+      justify-items: center;
+      width: min(1180px, calc(100vw - 72px));
+      min-height: 100svh;
+      margin: 0 auto;
+      padding: clamp(96px, 12vh, 136px) 0 clamp(34px, 5vh, 58px);
+    }
+
+    .sigil {
+      position: absolute;
+      z-index: -1;
+      top: 12%;
+      left: 50%;
+      width: min(670px, 72vw);
+      aspect-ratio: 1;
+      transform: translateX(-50%);
+      border: 1px solid rgba(115, 78, 139, .12);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 54px rgba(115, 78, 139, .035),
+        0 0 0 108px rgba(201, 163, 91, .025);
+    }
+
+    .sigil::before,
+    .sigil::after {
+      content: "";
+      position: absolute;
+      inset: 13%;
+      border: 1px solid rgba(201, 163, 91, .08);
+      border-radius: 50%;
+    }
+
+    .sigil::after {
+      inset: 29%;
+      border-color: rgba(115, 78, 139, .16);
+      box-shadow: 0 0 40px rgba(112, 66, 154, .12);
+    }
+
+    .title-wrap {
+      text-align: center;
+      transition: transform .65s ease;
+    }
+
+    .celestial-mark {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 14px;
+      border: 1px solid rgba(201, 163, 91, .62);
+      border-radius: 50%;
+      transform: rotate(45deg);
+    }
+
+    .celestial-mark::before,
+    .celestial-mark::after {
+      content: "";
+      position: absolute;
+      inset: 50% auto auto 50%;
+      background: var(--gold);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px rgba(241, 215, 154, .5);
+    }
+
+    .celestial-mark::before { width: 52px; height: 1px; }
+    .celestial-mark::after { width: 1px; height: 52px; }
+
+    h1 {
+      margin: 0;
+      color: var(--gold-light);
+      font-size: clamp(46px, 6.1vw, 88px);
+      font-weight: 500;
+      letter-spacing: .2em;
+      text-indent: .2em;
+      line-height: 1.08;
+      text-shadow: 0 2px 22px rgba(201, 163, 91, .18);
+    }
+
+    .guide {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: clamp(12px, 2.5vh, 25px) 0 clamp(18px, 3vh, 32px);
+      color: #bfae91;
+      font-size: clamp(14px, 1.35vw, 18px);
+      letter-spacing: .18em;
+      text-align: center;
+    }
+
+    .guide::before,
+    .guide::after {
+      content: "";
+      width: clamp(32px, 6vw, 82px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim));
+    }
+
+    .guide::after { transform: scaleX(-1); }
+
+    .question-entry {
+      position: relative;
+      display: grid;
+      width: min(560px, 82vw);
+      max-height: 92px;
+      margin: -8px 0 10px;
+      opacity: 1;
+      transition: max-height .45s ease, margin .45s ease, opacity .3s ease;
+    }
+
+    .question-entry input {
+      width: 100%;
+      padding: 14px 52px 14px 18px;
+      border: 1px solid rgba(201, 163, 91, .46);
+      border-radius: 2px;
+      outline: none;
+      color: var(--gold-light);
+      background:
+        linear-gradient(90deg, rgba(112, 66, 154, .08), transparent 34%),
+        rgba(7, 6, 9, .8);
+      box-shadow: inset 0 0 20px rgba(112, 66, 154, .06), 0 0 22px rgba(0, 0, 0, .28);
+      font: inherit;
+      font-size: 14px;
+      letter-spacing: .08em;
+      transition: border-color .25s ease, box-shadow .25s ease;
+    }
+
+    .question-entry input::placeholder { color: rgba(191, 174, 145, .56); }
+
+    .question-entry input:focus {
+      border-color: rgba(241, 215, 154, .84);
+      box-shadow: inset 0 0 22px rgba(112, 66, 154, .12), 0 0 24px rgba(112, 66, 154, .2);
+    }
+
+    .question-count {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      color: rgba(201, 163, 91, .56);
+      font-family: Georgia, serif;
+      font-size: 11px;
+      letter-spacing: .06em;
+      transform: translateY(-50%);
+    }
+
+    .app.started .question-entry {
+      max-height: 0;
+      margin: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .cards {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: clamp(260px, 39vh, 430px);
+      perspective: 1200px;
+    }
+
+    .cards::before {
+      content: "";
+      position: absolute;
+      bottom: 6%;
+      width: min(820px, 78vw);
+      height: 30%;
+      border-radius: 50%;
+      border: 1px solid rgba(201, 163, 91, .1);
+      background: repeating-radial-gradient(ellipse, transparent 0 20px, rgba(112, 66, 154, .055) 21px 22px);
+      transform: rotateX(70deg);
+      filter: drop-shadow(0 0 22px rgba(112, 66, 154, .2));
+    }
+
+    .tarot-card {
+      --rotate: 0deg;
+      --lift: 0px;
+      position: relative;
+      appearance: none;
+      flex: 0 0 clamp(126px, 15vw, 190px);
+      aspect-ratio: 2 / 3.25;
+      margin: 0 clamp(-19px, -1.15vw, -10px);
+      padding: 0;
+      color: inherit;
+      transform: translateY(var(--lift)) rotate(var(--rotate));
+      border: 1px solid rgba(241, 215, 154, .72);
+      border-radius: 9px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.045), transparent 38%),
+        repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 1px, transparent 1px 4px),
+        #0b0a0e;
+      box-shadow:
+        0 18px 38px rgba(0, 0, 0, .72),
+        0 0 16px rgba(112, 66, 154, .2),
+        inset 0 0 0 5px #08070a,
+        inset 0 0 0 6px rgba(201, 163, 91, .48),
+        inset 0 0 0 10px #0b0a0e,
+        inset 0 0 0 11px rgba(201, 163, 91, .26);
+      animation: breathe 4.6s ease-in-out infinite;
+      transition: transform .55s cubic-bezier(.2,.8,.2,1), filter .4s ease;
+    }
+
+    .tarot-card:nth-child(1) { --rotate: -4deg; --lift: 19px; animation-delay: -.8s; }
+    .tarot-card:nth-child(2) { --rotate: -2deg; --lift: 6px; animation-delay: -1.7s; }
+    .tarot-card:nth-child(3) { z-index: 3; --lift: -8px; animation-delay: -2.8s; }
+    .tarot-card:nth-child(4) { --rotate: 2deg; --lift: 6px; animation-delay: -1.1s; }
+    .tarot-card:nth-child(5) { --rotate: 4deg; --lift: 19px; animation-delay: -2.2s; }
+
+    .tarot-card::before,
+    .tarot-card::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .tarot-card::before {
+      inset: 14%;
+      border: 1px solid rgba(201, 163, 91, .4);
+      border-radius: 50%;
+      background:
+        linear-gradient(45deg, transparent 48.5%, rgba(201, 163, 91, .42) 49% 51%, transparent 51.5%),
+        linear-gradient(-45deg, transparent 48.5%, rgba(201, 163, 91, .42) 49% 51%, transparent 51.5%);
+      box-shadow:
+        0 0 0 11px rgba(8, 7, 10, .8),
+        0 0 0 12px rgba(201, 163, 91, .25),
+        inset 0 0 0 8px rgba(8, 7, 10, .72),
+        inset 0 0 0 9px rgba(201, 163, 91, .19);
+    }
+
+    .tarot-card::after {
+      top: 50%;
+      left: 50%;
+      width: 42%;
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border: 1px solid var(--gold);
+      border-radius: 50% 0 50% 0;
+      background:
+        radial-gradient(circle, var(--gold-light) 0 4%, #6d3c8b 5% 10%, #08070a 11% 20%, var(--gold) 21% 23%, transparent 24%),
+        linear-gradient(45deg, transparent 48%, rgba(201, 163, 91, .72) 49% 51%, transparent 52%);
+      box-shadow: 0 0 12px rgba(201, 163, 91, .34);
+    }
+
+    .star {
+      position: absolute;
+      top: 8%;
+      left: 50%;
+      width: 1px;
+      height: 84%;
+      background: linear-gradient(transparent, var(--gold) 18%, transparent 31%, transparent 69%, var(--gold) 82%, transparent);
+      transform: translateX(-50%);
+    }
+
+    .star::before,
+    .star::after {
+      content: "✦";
+      position: absolute;
+      left: 50%;
+      color: var(--gold);
+      font-size: 13px;
+      transform: translateX(-50%);
+    }
+
+    .star::before { top: 0; }
+    .star::after { bottom: 0; }
+
+    .primary-button {
+      position: relative;
+      min-width: 246px;
+      padding: 16px 32px 17px;
+      border: 1px solid var(--gold);
+      border-radius: 2px;
+      color: var(--gold-light);
+      background: linear-gradient(180deg, rgba(35, 31, 34, .92), rgba(11, 10, 13, .96));
+      box-shadow: 0 0 0 4px #050406, 0 0 0 5px rgba(201, 163, 91, .35), 0 0 30px rgba(112, 66, 154, .18);
+      font-size: clamp(18px, 1.8vw, 24px);
+      letter-spacing: .3em;
+      text-indent: .3em;
+      cursor: pointer;
+      transition: color .25s ease, box-shadow .25s ease, transform .25s ease;
+    }
+
+    .primary-button::before,
+    .primary-button::after {
+      content: "✦";
+      position: absolute;
+      top: 50%;
+      color: var(--gold);
+      font-size: 12px;
+      transform: translateY(-50%);
+    }
+
+    .primary-button::before { left: 17px; }
+    .primary-button::after { right: 17px; }
+
+    .primary-button:hover {
+      color: #fff1c9;
+      transform: translateY(-2px);
+      box-shadow: 0 0 0 4px #050406, 0 0 0 5px rgba(241, 215, 154, .6), 0 0 34px rgba(112, 66, 154, .38);
+    }
+
+    .primary-button:focus-visible,
+    .utility-button:focus-visible {
+      outline: 2px solid var(--gold-light);
+      outline-offset: 4px;
+    }
+
+    .app.started .primary-button { opacity: 0; pointer-events: none; transform: translateY(12px); }
+    .app.started .title-wrap { transform: translateY(-8px) scale(.86); }
+    .app.started .guide-text { font-size: 0; }
+    .app.started .guide-text::after {
+      content: attr(data-active-guide);
+      font-size: clamp(14px, 1.35vw, 18px);
+    }
+    .app.started .tarot-card {
+      flex-basis: clamp(104px, 10.4vw, 150px);
+      margin-inline: clamp(-12px, -.7vw, -6px);
+    }
+
+    .pool-card {
+      cursor: pointer;
+    }
+
+    .pool-card:hover,
+    .pool-card:focus-visible {
+      z-index: 8;
+      transform: translateY(calc(var(--lift) - 22px)) rotate(var(--rotate)) scale(1.035);
+      filter: brightness(1.24);
+      box-shadow:
+        0 25px 42px rgba(0,0,0,.78),
+        0 0 34px rgba(112,66,154,.7),
+        inset 0 0 0 5px #08070a,
+        inset 0 0 0 6px rgba(241,215,154,.82),
+        inset 0 0 0 10px #0b0a0e,
+        inset 0 0 0 11px rgba(201,163,91,.42);
+      outline: none;
+    }
+
+    .pool-card.is-selected {
+      z-index: 10;
+      transform: translateY(calc(var(--lift) - 34px)) rotate(var(--rotate)) scale(1.07);
+      filter: brightness(1.32);
+    }
+
+    .pool-card:disabled {
+      cursor: wait;
+    }
+
+    .pool-card:disabled:not(.is-selected) {
+      filter: brightness(.52);
+    }
+
+    .pool-card.is-gesture-hover {
+      z-index: 8;
+      transform: translateY(calc(var(--lift) - 22px)) rotate(var(--rotate)) scale(1.035);
+      filter: brightness(1.24);
+      box-shadow:
+        0 25px 42px rgba(0,0,0,.78),
+        0 0 34px rgba(112,66,154,.7),
+        inset 0 0 0 5px #08070a,
+        inset 0 0 0 6px rgba(241,215,154,.82),
+        inset 0 0 0 10px #0b0a0e,
+        inset 0 0 0 11px rgba(201,163,91,.42);
+    }
+
+    .camera-preview {
+      position: fixed;
+      z-index: 24;
+      top: 92px;
+      right: 38px;
+      width: 150px;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border: 1px solid rgba(201, 163, 91, .42);
+      border-radius: 4px;
+      background: #060508;
+      box-shadow: 0 0 24px rgba(112, 66, 154, .16);
+      opacity: 0;
+      visibility: hidden;
+      transform: scaleX(-1);
+      filter: saturate(.7) brightness(.72) contrast(1.08);
+      pointer-events: none;
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+
+    .app.gesture-mode .camera-preview.is-live {
+      opacity: .3;
+      visibility: visible;
+    }
+
+    .gesture-cursor {
+      position: fixed;
+      z-index: 130;
+      top: 0;
+      left: 0;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(241, 215, 154, .95);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 5px rgba(201, 163, 91, .08),
+        0 0 22px rgba(241, 215, 154, .65),
+        inset 0 0 14px rgba(112, 66, 154, .38);
+      opacity: 0;
+      pointer-events: none;
+      will-change: transform, opacity;
+      transition: opacity .22s ease;
+    }
+
+    .gesture-cursor::before,
+    .gesture-cursor::after {
+      content: "";
+      position: absolute;
+      inset: 50% auto auto 50%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .gesture-cursor::before {
+      width: 6px;
+      height: 6px;
+      background: #fff4cf;
+      box-shadow: 0 0 12px #e3bd69;
+    }
+
+    .gesture-cursor::after {
+      width: 58px;
+      height: 58px;
+      border: 1px solid rgba(112, 66, 154, .25);
+      background: conic-gradient(
+        var(--gold-light) 0 var(--gesture-progress, 0deg),
+        rgba(201, 163, 91, .08) var(--gesture-progress, 0deg) 360deg
+      );
+      box-shadow: 0 0 14px rgba(241, 215, 154, .32);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+      transition: opacity .16s ease;
+    }
+
+    .gesture-cursor.is-visible {
+      opacity: 1;
+    }
+
+    .gesture-cursor.is-pinching {
+      border-color: #fff4cf;
+      box-shadow:
+        0 0 0 7px rgba(201, 163, 91, .14),
+        0 0 30px rgba(241, 215, 154, .92),
+        inset 0 0 16px rgba(112, 66, 154, .48);
+    }
+
+    .gesture-cursor.is-cooling::after {
+      opacity: .28;
+    }
+
+    .gesture-prompt,
+    .control-toast {
+      position: fixed;
+      z-index: 136;
+      left: 50%;
+      padding: 9px 15px;
+      border: 1px solid rgba(201, 163, 91, .28);
+      color: #cdbb9a;
+      background: rgba(6, 5, 8, .82);
+      box-shadow: 0 0 22px rgba(112, 66, 154, .15);
+      font-size: 12px;
+      letter-spacing: .12em;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 8px);
+      pointer-events: none;
+      transition: opacity .28s ease, visibility .28s ease, transform .28s ease;
+    }
+
+    .gesture-prompt {
+      bottom: 62px;
+    }
+
+    .control-toast {
+      top: 90px;
+    }
+
+    .gesture-prompt.is-visible,
+    .control-toast.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
+
+    .pool-count {
+      position: absolute;
+      right: max(34px, 3vw);
+      bottom: 31px;
+      z-index: 18;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .14em;
+      opacity: 0;
+      transition: opacity .45s ease;
+    }
+
+    .app.started .pool-count { opacity: 1; }
+
+    .empty-pool {
+      color: var(--gold-light);
+      font-size: 18px;
+      letter-spacing: .2em;
+    }
+
+    .records {
+      position: absolute;
+      z-index: 18;
+      left: max(34px, 3vw);
+      bottom: 23px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: min(62vw, 820px);
+      min-height: 34px;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .45s ease, transform .45s ease;
+    }
+
+    .app.started .records {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .records-label {
+      flex: 0 0 auto;
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: .16em;
+    }
+
+    .records-list {
+      display: flex;
+      gap: 7px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .record-chip {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-left: 1px solid rgba(201, 163, 91, .5);
+      color: #b9aa90;
+      background: rgba(10, 8, 12, .62);
+      font-size: 11px;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+
+    .records-empty {
+      color: rgba(169, 156, 135, .55);
+      font-size: 11px;
+      letter-spacing: .08em;
+    }
+
+    .result-overlay {
+      position: fixed;
+      z-index: 100;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 72px 28px 34px;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(70, 36, 93, .32), transparent 46%),
+        rgba(2, 2, 3, .88);
+      backdrop-filter: blur(7px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+
+    .result-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .result-panel {
+      display: grid;
+      grid-template-columns: minmax(230px, 310px) minmax(280px, 440px);
+      align-items: center;
+      gap: clamp(38px, 6vw, 88px);
+      width: min(900px, 92vw);
+    }
+
+    .reveal-scene {
+      width: min(310px, 34vw);
+      aspect-ratio: 2 / 3.25;
+      justify-self: end;
+      perspective: 1500px;
+    }
+
+    .reveal-card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .result-overlay.is-open .reveal-card {
+      animation: revealFlip 1.12s cubic-bezier(.18,.75,.22,1) .12s both;
+    }
+
+    .reveal-side {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border: 1px solid rgba(241, 215, 154, .8);
+      border-radius: 11px;
+      backface-visibility: hidden;
+      box-shadow:
+        0 28px 68px rgba(0,0,0,.74),
+        0 0 34px rgba(112,66,154,.45),
+        0 0 0 5px #070609,
+        0 0 0 6px rgba(201,163,91,.42);
+    }
+
+    .reveal-back {
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle, transparent 0 20%, rgba(201,163,91,.35) 20.5% 21%, transparent 21.5% 33%, rgba(201,163,91,.25) 33.5% 34%, transparent 34.5%),
+        linear-gradient(45deg, transparent 49.3%, rgba(201,163,91,.48) 49.5% 50.5%, transparent 50.7%),
+        linear-gradient(-45deg, transparent 49.3%, rgba(201,163,91,.48) 49.5% 50.5%, transparent 50.7%),
+        #0b0a0e;
+      box-shadow:
+        inset 0 0 0 7px #08070a,
+        inset 0 0 0 8px rgba(201,163,91,.52),
+        inset 0 0 0 13px #0b0a0e,
+        inset 0 0 0 14px rgba(201,163,91,.25);
+    }
+
+    .reveal-back::after {
+      content: "✦";
+      display: grid;
+      place-items: center;
+      width: 39%;
+      aspect-ratio: 1;
+      border: 1px solid var(--gold);
+      border-radius: 50% 0 50% 0;
+      color: var(--gold-light);
+      font-size: 36px;
+      transform: rotate(45deg);
+      text-shadow: 0 0 10px rgba(112,66,154,.8);
+    }
+
+    .reveal-front {
+      transform: rotateY(180deg);
+      background: #0b0a0d;
+    }
+
+    .card-art {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #0b0a0d;
+    }
+
+    .card-art img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform .8s ease;
+    }
+
+    .card-art.is-reversed img {
+      transform: rotate(180deg);
+    }
+
+    .image-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+      color: var(--gold-light);
+      background:
+        radial-gradient(circle at 50% 42%, rgba(112,66,154,.32), transparent 33%),
+        repeating-radial-gradient(circle, transparent 0 24px, rgba(201,163,91,.09) 25px 26px),
+        #0a090d;
+      text-align: center;
+    }
+
+    .image-fallback[hidden] { display: none; }
+
+    .fallback-name {
+      display: block;
+      font-size: clamp(28px, 3vw, 42px);
+      letter-spacing: .18em;
+      text-indent: .18em;
+    }
+
+    .fallback-mark {
+      display: block;
+      margin-bottom: 18px;
+      color: var(--gold);
+      font-size: 34px;
+    }
+
+    .result-copy {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    .result-overlay.is-open .result-copy {
+      animation: revealCopy .7s ease .86s both;
+    }
+
+    .arcana-index {
+      margin: 0 0 14px;
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+    }
+
+    .result-name {
+      margin: 0;
+      color: var(--gold-light);
+      font-size: clamp(42px, 5.2vw, 70px);
+      font-weight: 500;
+      letter-spacing: .12em;
+      line-height: 1.2;
+      text-shadow: 0 0 22px rgba(201,163,91,.18);
+    }
+
+    .result-english {
+      margin: 8px 0 25px;
+      color: #776d60;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      font-style: italic;
+      letter-spacing: .13em;
+    }
+
+    .result-keywords {
+      margin: 0 0 34px;
+      color: #cfc0a4;
+      font-size: clamp(16px, 1.6vw, 20px);
+      letter-spacing: .18em;
+      line-height: 1.8;
+    }
+
+    .close-reading {
+      min-width: 186px;
+      padding: 13px 24px;
+      border: 1px solid rgba(201,163,91,.65);
+      color: var(--gold-light);
+      background: rgba(13, 11, 15, .84);
+      font-size: 14px;
+      letter-spacing: .2em;
+      cursor: pointer;
+      transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+    }
+
+    .close-reading:hover,
+    .close-reading:focus-visible {
+      border-color: var(--gold-light);
+      box-shadow: 0 0 22px rgba(112,66,154,.34);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    @keyframes revealFlip {
+      0% { transform: translateY(32px) scale(.76) rotateY(0); }
+      34% { transform: translateY(-7px) scale(1.04) rotateY(0); }
+      100% { transform: translateY(0) scale(1) rotateY(180deg); }
+    }
+
+    @keyframes revealCopy {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        box-shadow: 0 18px 38px rgba(0,0,0,.72), 0 0 13px rgba(112,66,154,.16),
+          inset 0 0 0 5px #08070a, inset 0 0 0 6px rgba(201,163,91,.48),
+          inset 0 0 0 10px #0b0a0e, inset 0 0 0 11px rgba(201,163,91,.26);
+      }
+      50% {
+        box-shadow: 0 18px 38px rgba(0,0,0,.72), 0 0 24px rgba(112,66,154,.42),
+          inset 0 0 0 5px #08070a, inset 0 0 0 6px rgba(241,215,154,.62),
+          inset 0 0 0 10px #0b0a0e, inset 0 0 0 11px rgba(201,163,91,.34);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app::before { inset: 8px; }
+      .corner { top: 20px; gap: 7px; }
+      .corner-left { left: 18px; }
+      .corner-right { right: 18px; }
+      .utility-button { min-height: 38px; padding: 0 11px; font-size: 12px; letter-spacing: .03em; }
+      .utility-button svg { display: none; }
+      .corner-left .utility-button:first-child { max-width: 108px; }
+      .stage { width: calc(100vw - 32px); padding-top: 90px; padding-bottom: 28px; }
+      h1 { font-size: clamp(42px, 13vw, 62px); }
+      .guide { gap: 8px; line-height: 1.8; letter-spacing: .09em; }
+      .guide::before, .guide::after { width: 18px; }
+      .cards { min-height: 320px; width: 112%; }
+      .tarot-card { flex-basis: clamp(92px, 27vw, 132px); margin-inline: -24px; }
+      .app.started .tarot-card { flex-basis: clamp(86px, 23vw, 112px); margin-inline: -29px; }
+      .primary-button { min-width: 214px; padding-block: 14px; }
+      .sigil { top: 23%; width: 110vw; }
+      .records { left: 18px; bottom: 14px; max-width: 68vw; gap: 8px; }
+      .record-chip { padding: 5px 7px; }
+      .pool-count { right: 18px; bottom: 19px; }
+      .result-overlay { padding: 72px 20px 24px; overflow-y: auto; }
+      .result-panel {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 22px;
+        width: 100%;
+      }
+      .reveal-scene { width: min(226px, 58vw); justify-self: center; }
+      .result-copy { text-align: center; }
+      .result-name { font-size: clamp(35px, 10vw, 48px); }
+      .result-english { margin-bottom: 13px; }
+      .result-keywords { margin-bottom: 20px; font-size: 15px; }
+      .camera-preview {
+        top: 68px;
+        right: 18px;
+        width: 96px;
+        opacity: 0;
+      }
+      .app.gesture-mode .camera-preview.is-live { opacity: .24; }
+      .gesture-cursor { width: 38px; height: 38px; }
+      .gesture-cursor::after { width: 50px; height: 50px; }
+      .gesture-prompt { bottom: 54px; }
+      .control-toast { top: 66px; }
+    }
+
+    @media (max-height: 690px) and (min-width: 761px) {
+      .stage { padding-top: 78px; padding-bottom: 24px; }
+      .celestial-mark { margin-bottom: 8px; transform: rotate(45deg) scale(.78); }
+      h1 { font-size: clamp(42px, 5.5vw, 66px); }
+      .guide { margin-block: 9px 12px; }
+      .cards { min-height: 280px; }
+      .tarot-card { flex-basis: min(15vw, 154px); }
+      .app.started .tarot-card { flex-basis: min(9.2vw, 116px); }
+      .primary-button { padding-block: 12px; }
+      .reveal-scene { width: min(240px, 29vw); }
+      .result-panel { gap: 48px; }
+      .result-name { font-size: 48px; }
+      .result-keywords { margin-bottom: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* 第六步：三张牌阵与 22 张 3D 回转牌环 */
+    #shuffleToggle {
+      cursor: pointer;
+    }
+
+    .stage {
+      grid-template-rows: auto auto auto auto minmax(250px, 1fr) auto;
+      width: min(1460px, calc(100vw - 64px));
+      padding-top: clamp(78px, 8.8vh, 100px);
+      padding-bottom: 26px;
+    }
+
+    .app.started .title-wrap {
+      transform: translateY(-2px) scale(.72);
+      transform-origin: center top;
+    }
+
+    .app.started .guide {
+      margin: 3px 0 8px;
+    }
+
+    .spread-slots {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(112px, 172px));
+      gap: clamp(18px, 4vw, 64px);
+      justify-content: center;
+      width: 100%;
+      max-height: 0;
+      margin: 0;
+      opacity: 0;
+      overflow: hidden;
+      transform: translateY(-12px);
+      transition: max-height .7s ease, opacity .55s ease, transform .65s ease, margin .65s ease;
+    }
+
+    .app.started .spread-slots {
+      max-height: 190px;
+      margin: 2px 0 8px;
+      opacity: 1;
+      overflow: visible;
+      transform: translateY(0);
+    }
+
+    .spread-slot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      aspect-ratio: 2 / 1.04;
+      border: 1px dashed rgba(201, 163, 91, .52);
+      color: rgba(201, 163, 91, .62);
+      background: radial-gradient(circle, rgba(112, 66, 154, .08), transparent 68%);
+      box-shadow: inset 0 0 26px rgba(112, 66, 154, .04);
+      transition: border-color .4s ease, box-shadow .4s ease;
+    }
+
+    .spread-slot::before,
+    .spread-slot::after {
+      content: "✦";
+      position: absolute;
+      top: 50%;
+      color: var(--gold);
+      font-size: 9px;
+      transform: translateY(-50%);
+    }
+
+    .spread-slot::before { left: -5px; }
+    .spread-slot::after { right: -5px; }
+
+    .slot-index {
+      position: absolute;
+      top: 12px;
+      color: rgba(201, 163, 91, .34);
+      font-family: Georgia, serif;
+      font-size: 10px;
+      letter-spacing: .15em;
+    }
+
+    .slot-label {
+      font-size: 18px;
+      letter-spacing: .28em;
+      text-indent: .28em;
+    }
+
+    .spread-slot.is-filled {
+      border-style: solid;
+      border-color: rgba(241, 215, 154, .76);
+      box-shadow: 0 0 24px rgba(112, 66, 154, .22), inset 0 0 20px rgba(201, 163, 91, .06);
+    }
+
+    .slot-reading {
+      position: absolute;
+      inset: 7px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 8px;
+      background: rgba(5, 4, 7, .93);
+    }
+
+    .slot-reading img,
+    .slot-mini-fallback {
+      width: 44px;
+      height: 70px;
+      border: 1px solid rgba(201, 163, 91, .58);
+      object-fit: cover;
+      background: #0b0a0e;
+    }
+
+    .slot-reading img.is-reversed {
+      transform: rotate(180deg);
+    }
+
+    .slot-mini-fallback {
+      display: grid;
+      place-items: center;
+      color: var(--gold-light);
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .slot-mini-fallback[hidden] { display: none; }
+
+    .slot-card-name {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold-light);
+      font-size: 15px;
+      letter-spacing: .12em;
+    }
+
+    .slot-orientation {
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .14em;
+    }
+
+    .app.started .cards {
+      position: relative;
+      width: min(1420px, 100%);
+      min-height: clamp(320px, 48vh, 510px);
+      perspective: 1450px;
+      transform-style: preserve-3d;
+      overflow: visible;
+      contain: layout style;
+    }
+
+    .app.started .cards::before {
+      bottom: 2%;
+      width: min(1080px, 86vw);
+      height: 48%;
+      background:
+        repeating-radial-gradient(ellipse, transparent 0 24px, rgba(112, 66, 154, .07) 25px 26px),
+        radial-gradient(ellipse, rgba(112, 66, 154, .12), transparent 64%);
+      transform: rotateX(72deg);
+    }
+
+    .app.started .pool-card {
+      --ring-x: 0px;
+      --ring-y: 0px;
+      --ring-scale: 1;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: var(--ring-z, 1);
+      width: clamp(102px, 8.2vw, 132px);
+      aspect-ratio: 2 / 3.25;
+      flex: none;
+      margin: 0;
+      transform:
+        translate(-50%, -50%)
+        translate3d(var(--ring-x), var(--ring-y), 0)
+        scale(var(--ring-scale));
+      opacity: var(--ring-opacity, 1);
+      filter: brightness(var(--ring-brightness, 1)) blur(var(--ring-blur, 0px));
+      will-change: transform, opacity, filter;
+      animation: none;
+      transition:
+        box-shadow .25s ease,
+        border-color .25s ease,
+        opacity .25s ease,
+        filter .25s ease;
+    }
+
+    .app.started .pool-card:hover,
+    .app.started .pool-card:focus-visible,
+    .app.started .pool-card.is-gesture-hover {
+      border-color: var(--gold-light);
+      outline: none;
+      box-shadow:
+        0 30px 56px rgba(0, 0, 0, .8),
+        0 0 40px rgba(241, 215, 154, .76),
+        0 0 72px rgba(112, 66, 154, .62),
+        inset 0 0 0 5px #08070a,
+        inset 0 0 0 6px rgba(241, 215, 154, .9),
+        inset 0 0 0 10px #0b0a0e,
+        inset 0 0 0 11px rgba(201, 163, 91, .52);
+    }
+
+    .app.started .pool-card.is-drawn {
+      pointer-events: none;
+      opacity: .16;
+      filter: brightness(.36) saturate(.3);
+    }
+
+    .pool-count {
+      padding: 10px 15px;
+      border: 1px solid rgba(201, 163, 91, .45);
+      color: var(--gold-light);
+      background: rgba(7, 6, 9, .78);
+      font-size: 13px;
+      letter-spacing: .18em;
+    }
+
+    .result-overlay {
+      padding: 30px;
+      place-items: start center;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(70, 36, 93, .25), transparent 46%),
+        rgba(2, 2, 3, .96);
+    }
+
+    .result-panel {
+      display: grid;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: clamp(14px, 2.2vh, 26px);
+      width: min(1240px, 94vw);
+      max-height: none;
+      padding-bottom: 24px;
+    }
+
+    .spread-result-title {
+      margin: 0;
+      color: var(--gold-light);
+      font-size: clamp(34px, 4.2vw, 60px);
+      font-weight: 500;
+      letter-spacing: .24em;
+      text-indent: .24em;
+      text-shadow: 0 0 24px rgba(201, 163, 91, .2);
+    }
+
+    .spread-results {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(190px, 280px));
+      justify-content: center;
+      gap: clamp(32px, 5.2vw, 80px);
+      width: 100%;
+    }
+
+    .spread-result-card {
+      display: grid;
+      justify-items: center;
+      min-width: 0;
+      opacity: 0;
+      transform: translateY(24px);
+      animation: resultRise .7s ease forwards;
+    }
+
+    .spread-result-card:nth-child(2) { animation-delay: .12s; }
+    .spread-result-card:nth-child(3) { animation-delay: .24s; }
+
+    .result-position {
+      margin: 0 0 10px;
+      color: var(--gold);
+      font-size: 16px;
+      letter-spacing: .3em;
+      text-indent: .3em;
+    }
+
+    .result-card-frame {
+      position: relative;
+      width: min(188px, 15vw);
+      aspect-ratio: 2 / 3.25;
+      overflow: hidden;
+      border: 1px solid rgba(241, 215, 154, .82);
+      border-radius: 8px;
+      background: #0a090d;
+      box-shadow:
+        0 20px 48px rgba(0, 0, 0, .76),
+        0 0 26px rgba(112, 66, 154, .35),
+        0 0 0 4px #070609,
+        0 0 0 5px rgba(201, 163, 91, .36);
+    }
+
+    .result-card-frame img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .result-card-frame img.is-reversed {
+      transform: rotate(180deg);
+    }
+
+    .result-card-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      color: var(--gold-light);
+      background:
+        radial-gradient(circle, rgba(112, 66, 154, .3), transparent 42%),
+        repeating-radial-gradient(circle, transparent 0 20px, rgba(201, 163, 91, .1) 21px 22px),
+        #09080c;
+      font-size: 24px;
+      letter-spacing: .14em;
+      text-align: center;
+    }
+
+    .result-card-fallback[hidden] { display: none; }
+
+    .result-card-name {
+      margin: 14px 0 4px;
+      color: var(--gold-light);
+      font-size: clamp(20px, 2vw, 28px);
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-indent: .14em;
+    }
+
+    .result-orientation {
+      margin: 0 0 8px;
+      color: #d3c7ae;
+      font-size: 13px;
+      letter-spacing: .2em;
+    }
+
+    .spread-result-keywords {
+      margin: 0;
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: .12em;
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    .reading-interpretation {
+      width: min(980px, 92vw);
+      padding: clamp(20px, 3vw, 34px);
+      border: 1px solid rgba(201, 163, 91, .34);
+      border-radius: 4px;
+      color: #d8cdb7;
+      background:
+        linear-gradient(135deg, rgba(112, 66, 154, .09), transparent 42%),
+        rgba(10, 8, 13, .7);
+      box-shadow:
+        inset 0 0 34px rgba(112, 66, 154, .055),
+        0 18px 50px rgba(0, 0, 0, .34);
+      backdrop-filter: blur(10px);
+      line-height: 1.9;
+    }
+
+    .interpretation-heading {
+      margin: 0 0 18px;
+      color: var(--gold-light);
+      font-size: clamp(22px, 2.4vw, 30px);
+      font-weight: 500;
+      letter-spacing: .2em;
+      text-align: center;
+    }
+
+    .question-echo {
+      margin: 0 0 20px;
+      padding: 12px 16px;
+      border-left: 2px solid rgba(201, 163, 91, .65);
+      color: #eadcbf;
+      background: rgba(201, 163, 91, .045);
+      font-size: 15px;
+      letter-spacing: .06em;
+    }
+
+    .interpretation-position {
+      display: grid;
+      grid-template-columns: minmax(128px, 170px) 1fr;
+      gap: 18px;
+      padding: 15px 0;
+      border-top: 1px solid rgba(201, 163, 91, .13);
+    }
+
+    .interpretation-position h4 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: .14em;
+    }
+
+    .interpretation-position p,
+    .synthesis-guidance,
+    .reading-disclaimer {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: .035em;
+    }
+
+    .interpretation-position strong {
+      color: var(--gold-light);
+      font-weight: 500;
+    }
+
+    .synthesis-guidance {
+      margin-top: 6px;
+      padding: 16px 18px;
+      border: 1px solid rgba(112, 66, 154, .3);
+      color: #eadfc8;
+      background: rgba(112, 66, 154, .09);
+    }
+
+    .synthesis-guidance strong { color: var(--gold-light); }
+
+    .reading-disclaimer {
+      margin-top: 18px;
+      color: rgba(216, 205, 183, .72);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    #restartReading {
+      min-width: 230px;
+      margin-top: 2px;
+      padding: 14px 26px;
+      font-size: 16px;
+    }
+
+    #restartReading.is-gesture-hover {
+      border-color: var(--gold-light);
+      box-shadow: 0 0 28px rgba(241, 215, 154, .42), 0 0 44px rgba(112, 66, 154, .3);
+      transform: translateY(-2px);
+    }
+
+    @keyframes resultRise {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 第八步：为拍摄留出的飞出、黑屏与召回段 */
+    .card-flight-layer {
+      position: fixed;
+      z-index: 180;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .capture-flight-card {
+      position: fixed;
+      width: 132px;
+      aspect-ratio: 2 / 3.45;
+      margin: 0;
+      opacity: 1;
+      transform-origin: center;
+      animation: captureFlyOut .64s cubic-bezier(.22, .72, .18, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    @keyframes captureFlyOut {
+      0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      54% { opacity: 1; transform: translate3d(0, -7vh, 0) scale(1.6); }
+      100% { opacity: 0; transform: translate3d(0, -30vh, 0) scale(2.9); }
+    }
+
+    .capture-overlay {
+      position: fixed;
+      z-index: 150;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      background: #000;
+      transition: opacity .24s ease, visibility 0s linear .24s;
+    }
+
+    .capture-overlay.is-open {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity .24s ease;
+    }
+
+    .capture-loading {
+      display: flex;
+      align-items: baseline;
+      color: var(--gold-light);
+      font-size: clamp(22px, 2.2vw, 32px);
+      letter-spacing: .38em;
+      text-indent: .38em;
+      text-shadow:
+        0 0 12px rgba(241, 215, 154, .68),
+        0 0 34px rgba(201, 163, 91, .34),
+        0 0 65px rgba(112, 66, 154, .28);
+      animation: captureGlow 1.45s ease-in-out infinite;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .capture-dots {
+      display: inline-flex;
+      gap: .08em;
+      width: 1.9em;
+      margin-left: -.25em;
+      text-indent: 0;
+      letter-spacing: 0;
+    }
+
+    .capture-dots i {
+      font-style: normal;
+      animation: captureDot .8s ease-in-out infinite alternate;
+    }
+
+    .capture-dots i:nth-child(2) { animation-delay: .13s; }
+    .capture-dots i:nth-child(3) { animation-delay: .26s; }
+
+    @keyframes captureGlow {
+      50% {
+        opacity: .78;
+        text-shadow:
+          0 0 18px rgba(241, 215, 154, .9),
+          0 0 48px rgba(201, 163, 91, .48),
+          0 0 82px rgba(112, 66, 154, .36);
+      }
+    }
+
+    @keyframes captureDot {
+      from { opacity: .24; transform: translateY(0); }
+      to { opacity: 1; transform: translateY(-.24em); }
+    }
+
+    .capture-overlay.is-recalling .capture-loading {
+      opacity: 0;
+      transform: scale(.94);
+    }
+
+    .capture-recall-stage {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .capture-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(252px, 31vw);
+      aspect-ratio: 2 / 3.45;
+      padding: 7px;
+      overflow: hidden;
+      border: 1px solid rgba(241, 215, 154, .88);
+      border-radius: 10px;
+      opacity: 0;
+      background: #08070a;
+      box-shadow:
+        0 0 0 4px rgba(8, 7, 10, .92),
+        0 0 0 5px rgba(201, 163, 91, .55),
+        0 0 48px rgba(241, 215, 154, .34),
+        0 0 88px rgba(112, 66, 154, .26);
+      transform: translate(-50%, -50%) scale(.54);
+      transition: opacity .2s ease, transform .28s cubic-bezier(.2, .9, .25, 1.16);
+      will-change: transform, opacity;
+    }
+
+    .capture-card.is-visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .capture-card img,
+    .capture-card-fallback {
+      width: 100%;
+      height: 100%;
+      border-radius: 5px;
+      object-fit: cover;
+    }
+
+    .capture-card img.is-reversed { transform: rotate(180deg); }
+
+    .capture-card-fallback {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--gold-light);
+      border: 1px solid rgba(201, 163, 91, .62);
+      background:
+        radial-gradient(circle, transparent 0 19%, rgba(201, 163, 91, .18) 20% 21%, transparent 22%),
+        repeating-linear-gradient(45deg, transparent 0 12px, rgba(201, 163, 91, .05) 13px 14px),
+        #0a0810;
+      font-size: 28px;
+      letter-spacing: .18em;
+      text-align: center;
+    }
+
+    .capture-card-fallback[hidden] { display: none; }
+
+    .capture-mouse-recall {
+      position: absolute;
+      bottom: clamp(34px, 6vh, 72px);
+      display: none;
+      padding: 10px 18px;
+      border: 0;
+      color: rgba(241, 215, 154, .72);
+      background: transparent;
+      font-size: 13px;
+      letter-spacing: .25em;
+      cursor: pointer;
+      animation: captureHint 1.6s ease-in-out infinite;
+    }
+
+    .app[data-control-mode="mouse"] .capture-overlay.is-waiting .capture-mouse-recall {
+      display: block;
+    }
+
+    @keyframes captureHint { 50% { opacity: .48; } }
+
+    .app.capture-active .corner,
+    .app.capture-active .camera-preview,
+    .app.capture-active .gesture-cursor,
+    .app.capture-active .gesture-prompt,
+    .app.capture-active .control-toast {
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+
+    .app.capture-active #particleCanvas { z-index: 170; }
+    .pool-card.is-capturing { visibility: hidden; }
+
+    .help-overlay {
+      position: fixed;
+      z-index: 120;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(75, 43, 112, .22), transparent 46%),
+        rgba(1, 2, 8, .9);
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .3s ease, visibility .3s ease;
+    }
+
+    .help-overlay.is-open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .help-panel {
+      position: relative;
+      width: min(820px, 94vw);
+      max-height: min(820px, 88vh);
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: clamp(28px, 4vw, 46px);
+      border: 1px solid rgba(222, 184, 100, .55);
+      border-radius: 5px;
+      color: #d8ccb4;
+      background:
+        linear-gradient(135deg, rgba(105, 63, 153, .1), transparent 38%),
+        rgba(7, 7, 18, .96);
+      box-shadow:
+        0 28px 90px rgba(0, 0, 0, .72),
+        0 0 38px rgba(126, 72, 183, .2),
+        inset 0 0 48px rgba(107, 68, 157, .045);
+      scrollbar-color: rgba(201, 163, 91, .55) transparent;
+    }
+
+    .help-title {
+      margin: 0 0 10px;
+      color: var(--gold-light);
+      font-size: clamp(30px, 4vw, 46px);
+      font-weight: 500;
+      letter-spacing: .22em;
+      text-align: center;
+      text-indent: .22em;
+      text-shadow: 0 0 24px rgba(241, 215, 154, .24);
+    }
+
+    .help-lead {
+      max-width: 650px;
+      margin: 0 auto 26px;
+      color: #bcae94;
+      font-size: 14px;
+      letter-spacing: .07em;
+      line-height: 1.9;
+      text-align: center;
+    }
+
+    .help-close {
+      position: sticky;
+      z-index: 3;
+      top: 0;
+      display: block;
+      width: 38px;
+      height: 38px;
+      margin: 0 0 -38px auto;
+      border: 1px solid rgba(201, 163, 91, .4);
+      border-radius: 50%;
+      color: var(--gold-light);
+      background: rgba(5, 5, 12, .7);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    .help-close:hover,
+    .help-close:focus-visible,
+    .help-close.is-gesture-hover {
+      border-color: var(--gold-light);
+      outline: none;
+      box-shadow: 0 0 24px rgba(241, 215, 154, .32);
+      transform: rotate(8deg);
+    }
+
+    .help-section {
+      padding: 20px 0;
+      border-top: 1px solid rgba(201, 163, 91, .15);
+    }
+
+    .help-section h3 {
+      margin: 0 0 13px;
+      color: var(--gold);
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: .16em;
+    }
+
+    .help-section p,
+    .help-section li {
+      color: #d0c3aa;
+      font-size: 14px;
+      letter-spacing: .035em;
+      line-height: 1.85;
+    }
+
+    .help-section p { margin: 0; }
+    .help-section ul { margin: 0; padding-left: 1.3em; }
+    .help-section li + li { margin-top: 7px; }
+    .help-section strong { color: var(--gold-light); font-weight: 500; }
+
+    .help-positions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .help-position {
+      padding: 12px 10px;
+      border: 1px solid rgba(201, 163, 91, .22);
+      color: #d7c8a9;
+      background: rgba(201, 163, 91, .035);
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-align: center;
+    }
+
+    .help-note {
+      margin-top: 18px !important;
+      padding: 13px 16px;
+      border-left: 2px solid rgba(201, 163, 91, .62);
+      color: #bcae94 !important;
+      background: rgba(201, 163, 91, .045);
+    }
+
+    /* 第十步：由固定种子 SVG 驱动的银河夜空与统一星空牌背 */
+    .app {
+      background-color: #02030b;
+      background-image: var(--galaxy-background-image);
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+
+    .app::after { display: none; }
+
+    .tarot-card,
+    .app.started .pool-card {
+      border-color: rgba(239, 205, 125, .82);
+      background-color: #08091a;
+      background-image: var(--tarot-back-image);
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      box-shadow:
+        0 18px 38px rgba(0, 0, 0, .78),
+        0 0 9px rgba(244, 211, 134, .34),
+        0 0 22px rgba(125, 68, 182, .22),
+        0 0 46px rgba(213, 166, 76, .09);
+      animation: nightCardBreathe 3.8s ease-in-out var(--glow-delay, 0s) infinite;
+      animation-delay: var(--glow-delay, 0s) !important;
+    }
+
+    .tarot-card::before,
+    .tarot-card::after,
+    .tarot-card > .star {
+      display: none;
+    }
+
+    @keyframes nightCardBreathe {
+      0%, 100% {
+        box-shadow:
+          0 18px 38px rgba(0, 0, 0, .78),
+          0 0 9px rgba(244, 211, 134, .34),
+          0 0 22px rgba(125, 68, 182, .22),
+          0 0 46px rgba(213, 166, 76, .09);
+      }
+      50% {
+        box-shadow:
+          0 22px 44px rgba(0, 0, 0, .82),
+          0 0 16px rgba(248, 220, 146, .9),
+          0 0 39px rgba(132, 72, 194, .7),
+          0 0 76px rgba(219, 174, 83, .3);
+      }
+    }
+
+    .tarot-card:hover,
+    .tarot-card:focus-visible,
+    .tarot-card.is-gesture-hover,
+    .app.started .pool-card:hover,
+    .app.started .pool-card:focus-visible,
+    .app.started .pool-card.is-gesture-hover {
+      border-color: #ffe8a8;
+      animation: none;
+      box-shadow:
+        0 28px 58px rgba(0, 0, 0, .86),
+        0 0 19px rgba(255, 231, 166, 1),
+        0 0 46px rgba(145, 81, 211, .86),
+        0 0 88px rgba(228, 183, 89, .42);
+    }
+
+    .capture-flight-card {
+      animation: captureFlyOut .64s cubic-bezier(.22, .72, .18, 1) forwards;
+      animation-delay: 0s !important;
+    }
+
+    @media (max-width: 760px) {
+      .stage {
+        width: calc(100vw - 24px);
+        padding-top: 72px;
+        padding-bottom: 20px;
+      }
+
+      .app.started .title-wrap { transform: scale(.62); height: 62px; }
+      .app.started .guide { margin: 0 0 5px; }
+      .spread-slots { grid-template-columns: repeat(3, minmax(82px, 1fr)); gap: 8px; }
+      .app.started .spread-slots { max-height: 120px; margin-bottom: 0; }
+      .spread-slot { aspect-ratio: 1.35 / 1; }
+      .slot-index { top: 7px; font-size: 8px; }
+      .slot-label { font-size: 13px; }
+      .slot-reading { inset: 4px; grid-template-columns: 28px 1fr; gap: 5px; padding: 3px; }
+      .slot-reading img, .slot-mini-fallback { width: 28px; height: 44px; }
+      .slot-card-name { margin-bottom: 2px; font-size: 10px; }
+      .slot-orientation { font-size: 8px; }
+      .app.started .cards { width: 116%; min-height: 390px; }
+      .app.started .pool-card { width: clamp(72px, 22vw, 88px); }
+      .pool-count { bottom: 14px; padding: 8px 10px; font-size: 11px; }
+      .result-overlay { padding: 58px 16px 18px; overflow-x: hidden; overflow-y: auto; }
+      .result-panel { gap: 16px; max-height: none; }
+      .spread-result-title { font-size: 34px; }
+      .spread-results {
+        grid-template-columns: repeat(3, minmax(90px, 1fr));
+        gap: 10px;
+      }
+      .result-position { margin-bottom: 7px; font-size: 12px; }
+      .result-card-frame { width: min(108px, 27vw); }
+      .result-card-name { margin-top: 9px; font-size: 15px; }
+      .result-orientation { margin-bottom: 5px; font-size: 10px; }
+      .spread-result-keywords { font-size: 9px; letter-spacing: .05em; }
+      .question-entry { width: min(520px, 88vw); margin-top: -2px; }
+      .question-entry input { padding-block: 12px; font-size: 12px; }
+      .reading-interpretation { width: 100%; padding: 18px 16px; }
+      .interpretation-position { grid-template-columns: 1fr; gap: 6px; }
+      .interpretation-position p,
+      .synthesis-guidance { font-size: 12px; line-height: 1.8; }
+      .question-echo { font-size: 13px; }
+      #restartReading { min-width: 190px; padding: 12px 22px; font-size: 14px; }
+      .capture-card { width: min(220px, 56vw); }
+      .capture-loading { font-size: 19px; letter-spacing: .25em; text-indent: .25em; }
+      .capture-mouse-recall { bottom: 30px; }
+      .help-overlay { padding: 12px; }
+      .help-panel { max-height: 92vh; padding: 30px 20px 24px; }
+      .help-title { font-size: 30px; }
+      .help-lead, .help-section p, .help-section li { font-size: 12px; }
+      .help-positions { grid-template-columns: 1fr; gap: 6px; }
+      .help-close { top: 0; }
+    }
+
+    @media (max-height: 690px) and (min-width: 761px) {
+      .stage { padding-top: 66px; }
+      .app.started .title-wrap { height: 54px; transform: scale(.62); }
+      .app.started .spread-slots { max-height: 112px; }
+      .spread-slot { max-height: 96px; }
+      .app.started .cards { min-height: 320px; }
+      .result-card-frame { width: min(150px, 13vw); }
+      .spread-result-title { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <canvas id="particleCanvas" aria-hidden="true"></canvas>
+    <video class="camera-preview" id="cameraPreview" autoplay muted playsinline aria-hidden="true"></video>
+    <div class="gesture-cursor" id="gestureCursor" aria-hidden="true"></div>
+    <div class="gesture-prompt" id="gesturePrompt" role="status">请把手举到摄像头前</div>
+    <div class="control-toast" id="controlToast" role="status" aria-live="polite"></div>
+    <div class="card-flight-layer" id="cardFlightLayer" aria-hidden="true"></div>
+
+    <div class="capture-overlay" id="captureOverlay" aria-hidden="true">
+      <div class="capture-loading" id="captureLoading">
+        <span>卡 牌 读 取 中</span>
+        <span class="capture-dots" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span>
+      </div>
+      <div class="capture-recall-stage" aria-hidden="true">
+        <div class="capture-card" id="captureCard">
+          <img id="captureCardImage" alt="">
+          <span class="capture-card-fallback" id="captureCardFallback" hidden></span>
+        </div>
+      </div>
+      <button class="capture-mouse-recall" id="captureMouseRecall" type="button">点击屏幕 · 召回卡牌</button>
+    </div>
+
+    <div class="corner corner-left" aria-label="控制选项">
+      <button class="utility-button gesture-target" id="controlToggle" type="button" data-mode="mouse" aria-pressed="false" title="当前：鼠标控制">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.5 10h9M12 5.5V14M7.5 18.5h.01M16.5 18.5h.01M5.4 8.5h13.2c1.1 0 2 .8 2.2 1.9l1 6.2c.2 1.3-.8 2.4-2 2.4-1 0-1.7-.4-2.3-1.2l-1-1.3h-9l-1 1.3c-.6.8-1.3 1.2-2.3 1.2-1.2 0-2.2-1.1-2-2.4l1-6.2c.2-1.1 1.1-1.9 2.2-1.9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>切换控制方式
+      </button>
+      <button class="utility-button gesture-target" id="helpButton" type="button" aria-haspopup="dialog" aria-controls="helpOverlay" aria-expanded="false" title="查看游戏操作说明">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 10.5v6M12 7.5h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>操作说明
+      </button>
+    </div>
+
+    <div class="corner corner-right">
+      <button class="utility-button gesture-target" id="shuffleToggle" type="button" title="洗牌并开始旋转">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h11l-2.5-2.5M20 17H9l2.5 2.5M15 4l3 3-3 3M9 14l-3 3 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg><span id="shuffleToggleLabel">洗牌</span>
+      </button>
+    </div>
+
+    <div class="sigil" aria-hidden="true"></div>
+
+    <section class="stage" aria-labelledby="page-title">
+      <div class="title-wrap">
+        <div class="celestial-mark" aria-hidden="true"></div>
+        <h1 id="page-title">塔罗占卜</h1>
+      </div>
+
+      <p class="guide">
+        <span class="guide-text" id="guideText" data-active-guide="依次选择过去、现在与未来">静心默念你的问题，让命运为你揭示答案</span>
+      </p>
+
+      <label class="question-entry" for="questionInput">
+        <input
+          id="questionInput"
+          type="text"
+          maxlength="40"
+          autocomplete="off"
+          placeholder="写下你心中的疑惑（也可以只在心里默念）"
+        >
+        <span class="question-count" id="questionCount" aria-hidden="true">0 / 40</span>
+      </label>
+
+      <div class="spread-slots" id="spreadSlots" aria-label="过去、现在、未来三张牌阵">
+        <div class="spread-slot" data-position="过去">
+          <span class="slot-index">Ⅰ</span><span class="slot-label">过去</span>
+        </div>
+        <div class="spread-slot" data-position="现在">
+          <span class="slot-index">Ⅱ</span><span class="slot-label">现在</span>
+        </div>
+        <div class="spread-slot" data-position="未来">
+          <span class="slot-index">Ⅲ</span><span class="slot-label">未来</span>
+        </div>
+      </div>
+
+      <div class="cards" id="cardPool" aria-label="背面朝上的塔罗牌池">
+        <div class="tarot-card" aria-hidden="true"><span class="star"></span></div>
+        <div class="tarot-card" aria-hidden="true"><span class="star"></span></div>
+        <div class="tarot-card" aria-hidden="true"><span class="star"></span></div>
+        <div class="tarot-card" aria-hidden="true"><span class="star"></span></div>
+        <div class="tarot-card" aria-hidden="true"><span class="star"></span></div>
+      </div>
+
+      <button class="primary-button" id="startButton" type="button">开始占卜</button>
+    </section>
+
+    <div class="pool-count" id="poolCount" aria-live="polite">已抽 0 / 3</div>
+
+    <div class="help-overlay" id="helpOverlay" aria-hidden="true">
+      <section class="help-panel" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <button class="help-close gesture-target" id="helpClose" type="button" aria-label="关闭操作说明">×</button>
+        <h2 class="help-title" id="helpTitle">操作说明</h2>
+        <p class="help-lead">静下心来，写下你心中的疑惑，也可以只在心里默念。开始占卜后，从 22 张大阿卡纳中依次抽取三张牌。</p>
+
+        <div class="help-positions" aria-label="三张牌的位置含义">
+          <div class="help-position">过去 · 来路底色</div>
+          <div class="help-position">现在 · 当下课题</div>
+          <div class="help-position">未来 · 走向提示</div>
+        </div>
+
+        <section class="help-section">
+          <h3>开始与控制方式</h3>
+          <ul>
+            <li>疑惑最多填写 40 字，也可以留空。点击<strong>「开始占卜」</strong>进入牌桌。</li>
+            <li>游戏默认尝试开启<strong>手势控制</strong>；摄像头不可用或被拒绝时，会自动切回鼠标。</li>
+            <li>左上角<strong>「切换控制方式」</strong>可随时在手势和鼠标之间切换。</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>鼠标操作</h3>
+          <ul>
+            <li>将鼠标移到牌上，牌会放大并保持最强金光；点击即可选中。</li>
+            <li>牌飞出屏幕后会进入黑屏读取状态。点击黑屏任意位置，即可召回牌面并归入对应牌槽。</li>
+            <li>进入牌桌后，点击右上角<strong>「洗牌 / 停止」</strong>控制牌环的持续洗牌状态。</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>手势操作 · 仅识别右手</h3>
+          <ul>
+            <li><strong>☝ 单指：</strong>移动圆环光标；指住一张牌或按钮约 1 秒即可确认。</li>
+            <li><strong>🤏 捏合：</strong>立即确认当前指向的牌或按钮。</li>
+            <li><strong>🖐 五指展开、指尖朝上并掌心正对摄像头约 0.6 秒：</strong>开始持续洗牌。</li>
+            <li><strong>✊ 握拳约 0.4 秒：</strong>停止洗牌并恢复缓慢旋转。</li>
+            <li>每次手势触发后约有 1 秒冷却，请稍等片刻再进行下一次操作。</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>黑屏召回</h3>
+          <p>黑屏期间不会响应抽牌或洗牌。将五指展开、指尖朝上，并让手掌正对摄像头约 0.2 秒，即可召回卡牌。平摊手掌拿着“想象中的牌”时不会触发；准备好后，再把手掌竖起并正对屏幕。</p>
+        </section>
+
+        <section class="help-section">
+          <h3>完成占卜</h3>
+          <p>每张牌有 50% 概率以逆位出现。三张牌全部归位后，结果页会结合你的疑惑、过去、现在与未来生成完整解读。</p>
+          <p class="help-note">塔罗映照的是当下的能量与心境，并非注定的结局——真正落子的人，始终是你自己。</p>
+        </section>
+      </section>
+    </div>
+
+    <div class="result-overlay" id="resultOverlay" aria-hidden="true">
+      <section class="result-panel" role="dialog" aria-modal="true" aria-labelledby="spreadResultTitle">
+        <h2 class="spread-result-title" id="spreadResultTitle">三张牌阵</h2>
+        <div class="spread-results" id="spreadResults"></div>
+        <article class="reading-interpretation" id="readingInterpretation" aria-label="牌阵解读"></article>
+        <button class="close-reading gesture-target" id="restartReading" type="button">重新占卜</button>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script>
+    /**
+     * Rider–Waite 大阿卡纳数据。
+     * 图片使用 Wikimedia Commons 的公有领域资源，可在后续抽牌步骤中直接使用。
+     */
+    const majorArcana = [
+      { number: 0,  englishName: "The Fool", chineseName: "愚人", uprightKeywords: ["新开始", "自由", "冒险", "纯真"], reversedKeywords: ["鲁莽", "冲动", "逃避", "缺乏方向"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_00_Fool.jpg" },
+      { number: 1,  englishName: "The Magician", chineseName: "魔术师", uprightKeywords: ["创造力", "行动", "意志", "潜能"], reversedKeywords: ["操纵", "欺瞒", "才能未用", "计划不周"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_01_Magician.jpg" },
+      { number: 2,  englishName: "The High Priestess", chineseName: "女祭司", uprightKeywords: ["直觉", "潜意识", "神秘", "内在智慧"], reversedKeywords: ["封闭", "忽视直觉", "秘密", "表里不一"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_02_High_Priestess.jpg" },
+      { number: 3,  englishName: "The Empress", chineseName: "皇后", uprightKeywords: ["丰盛", "滋养", "创造", "自然"], reversedKeywords: ["依赖", "停滞", "过度保护", "自我忽视"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_03_Empress.jpg" },
+      { number: 4,  englishName: "The Emperor", chineseName: "皇帝", uprightKeywords: ["秩序", "权威", "稳定", "责任"], reversedKeywords: ["专制", "僵化", "控制欲", "缺乏纪律"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_04_Emperor.jpg" },
+      { number: 5,  englishName: "The Hierophant", chineseName: "教皇", uprightKeywords: ["传统", "信仰", "教导", "归属"], reversedKeywords: ["反叛", "教条", "挑战传统", "个人信念"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_05_Hierophant.jpg" },
+      { number: 6,  englishName: "The Lovers", chineseName: "恋人", uprightKeywords: ["爱", "和谐", "选择", "价值一致"], reversedKeywords: ["失衡", "冲突", "错误选择", "关系疏离"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_06_Lovers.jpg" },
+      { number: 7,  englishName: "The Chariot", chineseName: "战车", uprightKeywords: ["胜利", "决心", "掌控", "前进"], reversedKeywords: ["失控", "阻碍", "侵略性", "方向混乱"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_07_Chariot.jpg" },
+      { number: 8,  englishName: "Strength", chineseName: "力量", uprightKeywords: ["勇气", "耐心", "自信", "温柔的力量"], reversedKeywords: ["自我怀疑", "软弱", "失去耐心", "情绪失控"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_08_Strength.jpg" },
+      { number: 9,  englishName: "The Hermit", chineseName: "隐者", uprightKeywords: ["内省", "独处", "指引", "寻求真理"], reversedKeywords: ["孤立", "退缩", "迷失", "拒绝帮助"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_09_Hermit.jpg" },
+      { number: 10, englishName: "Wheel of Fortune", chineseName: "命运之轮", uprightKeywords: ["转机", "命运", "循环", "好运"], reversedKeywords: ["阻滞", "坏运气", "抗拒改变", "失去掌控"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_10_Wheel_of_Fortune.jpg" },
+      { number: 11, englishName: "Justice", chineseName: "正义", uprightKeywords: ["公平", "真相", "因果", "责任"], reversedKeywords: ["不公", "偏见", "逃避责任", "真相受阻"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_11_Justice.jpg" },
+      { number: 12, englishName: "The Hanged Man", chineseName: "倒吊人", uprightKeywords: ["暂停", "臣服", "新视角", "放下"], reversedKeywords: ["拖延", "抗拒", "徒劳牺牲", "停滞"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_12_Hanged_Man.jpg" },
+      { number: 13, englishName: "Death", chineseName: "死神", uprightKeywords: ["结束", "转化", "告别", "重生"], reversedKeywords: ["抗拒改变", "无法放下", "停滞", "重复旧模式"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_13_Death.jpg" },
+      { number: 14, englishName: "Temperance", chineseName: "节制", uprightKeywords: ["平衡", "调和", "耐心", "疗愈"], reversedKeywords: ["失衡", "过度", "急躁", "内在冲突"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_14_Temperance.jpg" },
+      { number: 15, englishName: "The Devil", chineseName: "恶魔", uprightKeywords: ["束缚", "欲望", "阴影", "执着"], reversedKeywords: ["觉醒", "挣脱", "重获自由", "面对阴影"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_15_Devil.jpg" },
+      { number: 16, englishName: "The Tower", chineseName: "高塔", uprightKeywords: ["突变", "崩塌", "觉醒", "真相冲击"], reversedKeywords: ["逃避灾变", "余震", "抗拒转变", "内在动荡"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_16_Tower.jpg" },
+      { number: 17, englishName: "The Star", chineseName: "星星", uprightKeywords: ["希望", "灵感", "疗愈", "信念"], reversedKeywords: ["失望", "失去信心", "迷茫", "与内在断联"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_17_Star.jpg" },
+      { number: 18, englishName: "The Moon", chineseName: "月亮", uprightKeywords: ["潜意识", "幻象", "不安", "直觉"], reversedKeywords: ["迷雾消散", "恐惧释放", "真相浮现", "困惑"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_18_Moon.jpg" },
+      { number: 19, englishName: "The Sun", chineseName: "太阳", uprightKeywords: ["喜悦", "成功", "活力", "清晰"], reversedKeywords: ["短暂低落", "过度乐观", "延迟成功", "缺乏热情"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_19_Sun.jpg" },
+      { number: 20, englishName: "Judgement", chineseName: "审判", uprightKeywords: ["觉醒", "召唤", "反思", "重生"], reversedKeywords: ["自我怀疑", "拒绝召唤", "苛责", "无法原谅"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_20_Judgement.jpg" },
+      { number: 21, englishName: "The World", chineseName: "世界", uprightKeywords: ["完成", "整合", "成就", "圆满"], reversedKeywords: ["未完成", "缺乏收尾", "停滞", "寻求圆满"], image: "https://commons.wikimedia.org/wiki/Special:FilePath/RWS_Tarot_21_World.jpg" }
+    ];
+
+    const arcanaInterpretations = {
+      0: {
+        upright: "一个不被旧经验束缚的新起点正在出现。你无需等到万事俱备，但要带着好奇而非侥幸迈出第一步。",
+        reversed: "自由若缺少方向，容易变成逃避或冲动。先辨认你真正想去的地方，再决定是否纵身一跃。"
+      },
+      1: {
+        upright: "你手中已经具备促成改变的资源，关键在于集中意志，把想法转译成清晰而具体的行动。",
+        reversed: "能力并未消失，只是可能被分散、误用或藏在自我怀疑之后。诚实检查动机，也别被漂亮话术牵着走。"
+      },
+      2: {
+        upright: "答案暂时不在喧闹的外界，而在你反复浮现的直觉里。给沉默一些空间，尚未说出的信息会逐渐清晰。",
+        reversed: "你可能正在压低内心的声音，或被秘密与猜测扰乱判断。别急着下结论，先分清直觉与焦虑。"
+      },
+      3: {
+        upright: "这件事需要滋养而不是催逼。允许关系、计划或自我价值在稳定照料中生长，丰盛会从持续投入里形成。",
+        reversed: "过度付出或等待他人肯定，正在耗损你的创造力。先把照顾自己的位置补回来，停滞才会松动。"
+      },
+      4: {
+        upright: "建立边界、秩序与可执行的规则，会让局面重新稳定。此刻适合承担责任，并做出成熟明确的决定。",
+        reversed: "控制得太紧会令事情失去弹性，也可能有人以权威掩盖不安。调整规则，但不要用强硬代替安全感。"
+      },
+      5: {
+        upright: "传统经验、可靠的导师或共同价值观能提供支点。先理解规则为何存在，再借助成熟路径前进。",
+        reversed: "旧标准未必仍适合你。可以质疑惯例并形成自己的信念，但别为了反叛而反叛，仍需为选择负责。"
+      },
+      6: {
+        upright: "真正的选择来自价值一致，而不只是短暂吸引。坦诚面对你珍视什么，关系与决定才会走向和谐。",
+        reversed: "失衡往往源自言行与内心不一致。先处理回避的冲突，不要在害怕失去时仓促作出承诺。"
+      },
+      7: {
+        upright: "方向一旦明确，分散的力量便能被你驾驭。保持纪律与决心，当前阻力不足以阻止你前进。",
+        reversed: "用力过猛或方向混乱都可能让战车失控。暂停争胜，重新校准目标与节奏，再决定如何推进。"
+      },
+      8: {
+        upright: "真正的力量不是压制，而是温柔地驾驭本能。耐心、自信与稳定情绪，会比强攻带来更长久的结果。",
+        reversed: "自我怀疑正在放大困难，也容易把脆弱变成急躁。先恢复内在力量，不必用外在强硬证明自己。"
+      },
+      9: {
+        upright: "暂时退开人群有助于看清真相。独处不是拒绝世界，而是整理经验，找到只属于你的那盏灯。",
+        reversed: "反思可能已滑向封闭与孤立。若独自思考只让迷雾更浓，就允许可信任的人带来不同视角。"
+      },
+      10: {
+        upright: "局面正进入新的循环，机会可能以意外方式出现。顺势而动，同时记得好运也需要主动承接。",
+        reversed: "延迟与反复提醒你：仍有旧模式尚未处理。与其对抗不可控的变化，不如修正自己能影响的部分。"
+      },
+      11: {
+        upright: "事实、边界与因果需要被认真看见。以公平标准衡量双方，并为自己的选择承担相应结果。",
+        reversed: "偏见、信息缺口或逃避责任正在影响判断。先补齐事实，不要为了得到想要的答案而改写尺度。"
+      },
+      12: {
+        upright: "眼下的暂停并非毫无意义，它邀请你放下旧角度。暂缓行动，换一个视点，答案会在松手后出现。",
+        reversed: "等待若没有带来新认识，就可能只是拖延。辨认你不愿放下的执念，停止没有回报的自我牺牲。"
+      },
+      13: {
+        upright: "一个阶段已经完成使命，需要被郑重告别。接受结束会腾出空间，让更符合当下的生活重新生长。",
+        reversed: "你可能明知该改变，却仍抓住熟悉的旧状态。先允许失去带来的不舍，转化才不会停在门口。"
+      },
+      14: {
+        upright: "不同力量可以通过耐心调和而共存。降低极端反应，持续做小幅修正，局面会逐渐恢复流动。",
+        reversed: "过量、急躁或内外不一致正在打破平衡。先减少刺激与消耗，再寻找真正可持续的中间位置。"
+      },
+      15: {
+        upright: "欲望、依赖或恐惧正形成看不见的锁链。承认自己从中获得了什么，才有机会收回选择权。",
+        reversed: "你已经开始看见束缚的结构，也具备挣脱它的力量。保持诚实，别因短暂轻松又回到旧循环。"
+      },
+      16: {
+        upright: "原有结构若建立在不真实之上，震动会促使它迅速瓦解。冲击虽强，却也让真相与重建空间显露。",
+        reversed: "你可能感知到变化将至，却仍试图维持表面稳定。主动拆除隐患，会比被动等待崩塌更温和。"
+      },
+      17: {
+        upright: "希望正在恢复，疗愈来自对未来重新建立信任。保持真实与开放，小小的光会引导下一段路。",
+        reversed: "失望让你暂时看不见自身的光。不要强迫乐观，先照顾耗损，再从一个可做到的小愿望开始。"
+      },
+      18: {
+        upright: "情绪、梦境与潜意识正在放大，眼前未必是全部事实。尊重直觉，同时给重要决定更多验证时间。",
+        reversed: "迷雾开始松动，但残留的恐惧仍会扭曲视线。让事实逐项浮现，不必一次逼自己看清所有答案。"
+      },
+      19: {
+        upright: "清晰、活力与坦诚为这件事带来积极空间。允许自己被看见，也把喜悦转化为实际的创造与分享。",
+        reversed: "光仍然存在，只是被延迟、自我否定或过度期待遮住。调低完美标准，真实的进展会重新显现。"
+      },
+      20: {
+        upright: "过去的经验正在召唤你作出更清醒的回应。放下旧评判，承认真正想成为的人，并据此行动。",
+        reversed: "自我苛责或害怕评价，让你迟迟不敢回应内心召唤。宽恕并非否认错误，而是停止让它决定未来。"
+      },
+      21: {
+        upright: "一段旅程接近圆满，分散的经验正在整合成完整成果。认可自己的成长，然后从容进入下一周期。",
+        reversed: "距离完成只差最后的整合或收尾。别因不完美否定全程，找出尚未闭合的一环并认真完成它。"
+      }
+    };
+
+    majorArcana.forEach(card => {
+      const interpretation = arcanaInterpretations[card.number];
+      card.uprightInterpretation = interpretation.upright;
+      card.reversedInterpretation = interpretation.reversed;
+    });
+
+    function createSeededRandom(seed) {
+      let state = seed >>> 0;
+      return () => {
+        state += 0x6D2B79F5;
+        let value = state;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function randomGaussian(random) {
+      const first = Math.max(random(), .000001);
+      const second = Math.max(random(), .000001);
+      return Math.sqrt(-2 * Math.log(first)) * Math.cos(Math.PI * 2 * second);
+    }
+
+    function svgDataUrl(svg) {
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
+    function createTwinkleAnimation(index, random, minOpacity = .24) {
+      const duration = (2.4 + random() * 3.4).toFixed(2);
+      const begin = (-(random() * 5)).toFixed(2);
+      return `<animate attributeName="opacity" values="1;${minOpacity};1" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`;
+    }
+
+    function generateTarotBackSvg() {
+      const random = createSeededRandom(0x7A701026);
+      const stars = Array.from({ length: 95 }, (_, index) => {
+        const x = 42 + random() * 516;
+        const y = 42 + random() * 891;
+        const radius = .7 + Math.pow(random(), 2.2) * 2.2;
+        const opacity = .34 + random() * .66;
+        const color = random() < .18 ? "#ccb3ff" : (random() < .22 ? "#ffe3a0" : "#f5f2ff");
+        const animation = index % 5 === 0 ? createTwinkleAnimation(index, random, .16) : "";
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(2)}" fill="${color}" opacity="${opacity.toFixed(2)}">${animation}</circle>`;
+      }).join("");
+
+      const constellationPoints = Array.from({ length: 7 }, (_, index) => ({
+        x: 104 + index * 65 + random() * 24,
+        y: 105 + random() * 116
+      }));
+      const constellationLine = constellationPoints
+        .map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+        .join(" ");
+      const constellationStars = constellationPoints.map((point, index) => `
+        <g transform="translate(${point.x.toFixed(1)} ${point.y.toFixed(1)})">
+          <circle r="${index === 3 ? 4.2 : 2.9}" fill="#ffe8ae" filter="url(#starGlow)"/>
+          <path d="M0 -9 L1.3 -1.3 L9 0 L1.3 1.3 L0 9 L-1.3 1.3 L-9 0 L-1.3 -1.3 Z" fill="#f8d88d" opacity=".62"/>
+        </g>
+      `).join("");
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="975" viewBox="0 0 600 975" data-random-stars="95" data-twinkling-stars="19">
+          <defs>
+            <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#05091d"/>
+              <stop offset=".48" stop-color="#130b2d"/>
+              <stop offset="1" stop-color="#050817"/>
+            </linearGradient>
+            <radialGradient id="nebulaA">
+              <stop offset="0" stop-color="#7544bd" stop-opacity=".5"/>
+              <stop offset=".46" stop-color="#3b2d88" stop-opacity=".2"/>
+              <stop offset="1" stop-color="#1b154a" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="nebulaB">
+              <stop offset="0" stop-color="#2659a8" stop-opacity=".42"/>
+              <stop offset=".5" stop-color="#55338d" stop-opacity=".16"/>
+              <stop offset="1" stop-color="#101b4e" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#fff0b7"/>
+              <stop offset=".45" stop-color="#d9ae55"/>
+              <stop offset="1" stop-color="#8f6428"/>
+            </linearGradient>
+            <filter id="cloudBlur"><feGaussianBlur stdDeviation="34"/></filter>
+            <filter id="moonGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="8" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="starGlow" x="-250%" y="-250%" width="500%" height="500%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <mask id="crescentMask">
+              <rect width="600" height="975" fill="white"/>
+              <circle cx="338" cy="487" r="82" fill="black"/>
+            </mask>
+          </defs>
+          <rect width="600" height="975" rx="34" fill="url(#night)"/>
+          <ellipse cx="170" cy="350" rx="230" ry="155" fill="url(#nebulaA)" filter="url(#cloudBlur)" transform="rotate(-22 170 350)"/>
+          <ellipse cx="455" cy="676" rx="245" ry="175" fill="url(#nebulaB)" filter="url(#cloudBlur)" transform="rotate(28 455 676)"/>
+          <g>${stars}</g>
+          <polyline points="${constellationLine}" fill="none" stroke="#d4bc82" stroke-opacity=".42" stroke-width="1.5"/>
+          ${constellationStars}
+          <g filter="url(#moonGlow)">
+            <circle cx="300" cy="487" r="104" fill="url(#gold)" mask="url(#crescentMask)"/>
+            <circle cx="300" cy="487" r="120" fill="none" stroke="#d9ae55" stroke-opacity=".3"/>
+          </g>
+          <g fill="url(#gold)" filter="url(#starGlow)">
+            <path d="M300 302 L308 336 L342 344 L308 352 L300 386 L292 352 L258 344 L292 336 Z"/>
+            <path d="M300 588 L308 622 L342 630 L308 638 L300 672 L292 638 L258 630 L292 622 Z"/>
+            <path d="M116 487 L124 521 L158 529 L124 537 L116 571 L108 537 L74 529 L108 521 Z"/>
+            <path d="M484 487 L492 521 L526 529 L492 537 L484 571 L476 537 L442 529 L476 521 Z"/>
+          </g>
+          <rect x="13" y="13" width="574" height="949" rx="29" fill="none" stroke="#f4d78e" stroke-width="4"/>
+          <rect x="29" y="29" width="542" height="917" rx="22" fill="none" stroke="#a97831" stroke-width="2"/>
+          <rect x="38" y="38" width="524" height="899" rx="18" fill="none" stroke="#e8c675" stroke-opacity=".42"/>
+        </svg>
+      `.trim();
+    }
+
+    function generateGalaxyBackgroundSvg() {
+      const random = createSeededRandom(0xC05A051C);
+      const width = 1920;
+      const height = 1080;
+      const angle = 27 * Math.PI / 180;
+      const cosine = Math.cos(angle);
+      const sine = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      const bandDust = Array.from({ length: 500 }, (_, index) => {
+        const along = (random() - .5) * 2440;
+        const across = randomGaussian(random) * 88;
+        const x = centerX + along * cosine - across * sine;
+        const y = centerY + along * sine + across * cosine;
+        const radius = .35 + Math.pow(random(), 2.5) * 1.9;
+        const opacity = .16 + Math.max(0, 1 - Math.abs(across) / 300) * random() * .72;
+        const fill = random() < .14 ? "#d4b9ff" : (random() < .17 ? "#ffe6ae" : "#f5f2ff");
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(2)}" fill="${fill}" opacity="${opacity.toFixed(2)}"/>`;
+      }).join("");
+
+      const fieldStars = [];
+      while (fieldStars.length < 170) {
+        const x = random() * width;
+        const y = random() * height;
+        const distanceFromBand = Math.abs(-(x - centerX) * sine + (y - centerY) * cosine);
+        if (distanceFromBand < 190 && random() < .78) continue;
+        const index = fieldStars.length;
+        const radius = .45 + Math.pow(random(), 2.6) * 2.2;
+        const opacity = .25 + random() * .68;
+        const animation = index % 7 === 0 ? createTwinkleAnimation(index, random, .12) : "";
+        fieldStars.push(
+          `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius.toFixed(2)}" fill="${random() < .15 ? "#d7c0ff" : "#f8f3e6"}" opacity="${opacity.toFixed(2)}">${animation}</circle>`
+        );
+      }
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid slice" data-band-angle="27" data-band-stars="500" data-field-stars="170">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#01040d"/>
+              <stop offset=".46" stop-color="#08091b"/>
+              <stop offset="1" stop-color="#03020d"/>
+            </linearGradient>
+            <linearGradient id="wideBand" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#251d59" stop-opacity="0"/>
+              <stop offset=".5" stop-color="#6650a3" stop-opacity=".34"/>
+              <stop offset="1" stop-color="#261b59" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="brightCore" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#bda7e0" stop-opacity="0"/>
+              <stop offset=".48" stop-color="#e6d9ff" stop-opacity=".36"/>
+              <stop offset=".52" stop-color="#cfb8ee" stop-opacity=".32"/>
+              <stop offset="1" stop-color="#9f83ce" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="spaceNebulaA">
+              <stop offset="0" stop-color="#6a40aa" stop-opacity=".35"/>
+              <stop offset=".48" stop-color="#3d287c" stop-opacity=".15"/>
+              <stop offset="1" stop-color="#24145c" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="spaceNebulaB">
+              <stop offset="0" stop-color="#275ba7" stop-opacity=".3"/>
+              <stop offset=".5" stop-color="#40338e" stop-opacity=".13"/>
+              <stop offset="1" stop-color="#17275e" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="galaxyBlur" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="42"/></filter>
+            <filter id="coreBlur" x="-30%" y="-120%" width="160%" height="340%"><feGaussianBlur stdDeviation="19"/></filter>
+            <filter id="nebulaBlur"><feGaussianBlur stdDeviation="74"/></filter>
+          </defs>
+          <rect width="${width}" height="${height}" fill="url(#sky)"/>
+          <ellipse cx="370" cy="280" rx="410" ry="250" fill="url(#spaceNebulaA)" filter="url(#nebulaBlur)" transform="rotate(-19 370 280)"/>
+          <ellipse cx="1560" cy="775" rx="430" ry="270" fill="url(#spaceNebulaB)" filter="url(#nebulaBlur)" transform="rotate(24 1560 775)"/>
+          <g transform="rotate(27 ${centerX} ${centerY})">
+            <rect x="-260" y="344" width="2440" height="392" fill="url(#wideBand)" filter="url(#galaxyBlur)"/>
+            <rect x="-260" y="466" width="2440" height="148" fill="url(#brightCore)" filter="url(#coreBlur)"/>
+          </g>
+          <g>${bandDust}</g>
+          <g>${fieldStars.join("")}</g>
+        </svg>
+      `.trim();
+    }
+
+    function applyCardGlowDelays(scope = document) {
+      scope.querySelectorAll(".tarot-card").forEach((card, index) => {
+        card.style.setProperty("--glow-delay", `${(-index * .17).toFixed(2)}s`);
+      });
+    }
+
+    // 暴露数据，方便后续接入手势控制。
+    window.majorArcana = majorArcana;
+
+    const app = document.getElementById("app");
+    const startButton = document.getElementById("startButton");
+    const cardPool = document.getElementById("cardPool");
+    const guideText = document.getElementById("guideText");
+    const poolCount = document.getElementById("poolCount");
+    const spreadSlots = document.getElementById("spreadSlots");
+    const resultOverlay = document.getElementById("resultOverlay");
+    const spreadResults = document.getElementById("spreadResults");
+    const restartReading = document.getElementById("restartReading");
+    const shuffleToggle = document.getElementById("shuffleToggle");
+    const shuffleToggleLabel = document.getElementById("shuffleToggleLabel");
+    const particleCanvas = document.getElementById("particleCanvas");
+    const particleContext = particleCanvas.getContext("2d", { alpha: true });
+    const controlToggle = document.getElementById("controlToggle");
+    const cameraPreview = document.getElementById("cameraPreview");
+    const gestureCursor = document.getElementById("gestureCursor");
+    const gesturePrompt = document.getElementById("gesturePrompt");
+    const controlToast = document.getElementById("controlToast");
+    const cardFlightLayer = document.getElementById("cardFlightLayer");
+    const captureOverlay = document.getElementById("captureOverlay");
+    const captureCard = document.getElementById("captureCard");
+    const captureCardImage = document.getElementById("captureCardImage");
+    const captureCardFallback = document.getElementById("captureCardFallback");
+    const captureMouseRecall = document.getElementById("captureMouseRecall");
+    const questionInput = document.getElementById("questionInput");
+    const questionCount = document.getElementById("questionCount");
+    const readingInterpretation = document.getElementById("readingInterpretation");
+    const helpButton = document.getElementById("helpButton");
+    const helpOverlay = document.getElementById("helpOverlay");
+    const helpClose = document.getElementById("helpClose");
+    const helpPanel = helpOverlay.querySelector(".help-panel");
+
+    const tarotBackSvg = generateTarotBackSvg();
+    const galaxyBackgroundSvg = generateGalaxyBackgroundSvg();
+    const tarotBackUrl = svgDataUrl(tarotBackSvg);
+    const galaxyBackgroundUrl = svgDataUrl(galaxyBackgroundSvg);
+    document.documentElement.style.setProperty("--tarot-back-image", `url("${tarotBackUrl}")`);
+    document.documentElement.style.setProperty("--galaxy-background-image", `url("${galaxyBackgroundUrl}")`);
+    app.dataset.cardBackRandomStars = "95";
+    app.dataset.cardBackTwinklingStars = "19";
+    app.dataset.galaxyAngle = "27";
+    app.dataset.galaxyBandStars = "500";
+    app.dataset.galaxyFieldStars = "170";
+    window.tarotGeneratedArt = {
+      cardBackUrl: tarotBackUrl,
+      galaxyBackgroundUrl: galaxyBackgroundUrl,
+      seedVersion: "tarot-night-v1"
+    };
+    applyCardGlowDelays();
+
+    let deck = [];
+    let drawnCards = [];
+    let isReadingOpen = false;
+    let carouselRunning = false;
+    let carouselRotation = 0;
+    let carouselSpeed = 0;
+    let carouselLastTime = 0;
+    let mouseHoveredCard = null;
+    let currentHandGesture = "其它";
+    let gestureDwellStart = 0;
+    let gestureCooldownUntil = 0;
+    let gesturePoseSince = 0;
+    let gesturePoseLatched = false;
+    let trackedGesturePose = "其它";
+    let pinchActive = false;
+    let pinchJustStarted = false;
+    let isShuffling = false;
+    let lastHiddenRemap = 0;
+    let hiddenRemapCount = 0;
+    let captureSequenceActive = false;
+    let capturePhase = "idle";
+    let pendingReading = null;
+    let captureSequenceToken = 0;
+    let isHelpOpen = false;
+    let helpLastFocus = null;
+    let currentQuestion = "";
+    const spreadPositions = ["过去", "现在", "未来"];
+    const spreadPositionThemes = ["来路底色", "当下课题", "走向提示"];
+
+    // MediaPipe Hands 接收的是未镜像原始画面：在常见自拍摄像头中，
+    // 真实右手会被标为 "Left"。若个别设备相反，只需改成 "Right"。
+    const MEDIAPIPE_RIGHT_HAND_LABEL = "Left";
+    const CURSOR_EASING = .25;
+    const HAND_MISSING_DELAY = 520;
+    const DWELL_CONFIRM_MS = 1000;
+    const OPEN_HAND_HOLD_MS = 600;
+    const FIST_HOLD_MS = 400;
+    const RECALL_HOLD_MS = 200;
+    const GESTURE_COOLDOWN_MS = 1000;
+    const PINCH_RATIO_MAX = .3;
+    const HIDDEN_REMAP_INTERVAL = 150;
+    const FINGER_EXTENSION_RATIO = 1.12;
+    const PALM_WIDTH_RATIO_MIN = .72;
+    const FINGERTIPS_UP_RATIO_MIN = .38;
+    const FINGER_LANDMARKS = [
+      { name: "thumb", tip: 4, secondJoint: 3 },
+      { name: "index", tip: 8, secondJoint: 6 },
+      { name: "middle", tip: 12, secondJoint: 10 },
+      { name: "ring", tip: 16, secondJoint: 14 },
+      { name: "pinky", tip: 20, secondJoint: 18 }
+    ];
+
+    let controlMode = "mouse";
+    let mediaPipeHands = null;
+    let cameraController = null;
+    let cameraLive = false;
+    let cameraStarting = false;
+    let handFrameBusy = false;
+    let rightHandDetected = false;
+    let lastRightHandTime = 0;
+    let gestureSession = 0;
+    let controlToastTimer = 0;
+    let gestureHoveredCard = null;
+    let gestureTargetX = window.innerWidth / 2;
+    let gestureTargetY = window.innerHeight / 2;
+    let gestureCursorX = gestureTargetX;
+    let gestureCursorY = gestureTargetY;
+
+    function showControlToast(message, duration = 2600) {
+      window.clearTimeout(controlToastTimer);
+      controlToast.textContent = message;
+      controlToast.classList.add("is-visible");
+      controlToastTimer = window.setTimeout(() => {
+        controlToast.classList.remove("is-visible");
+      }, duration);
+    }
+
+    function clearGestureHover() {
+      if (!gestureHoveredCard) {
+        setGestureProgress(0);
+        return;
+      }
+      gestureHoveredCard.classList.remove("is-gesture-hover");
+      gestureHoveredCard = null;
+      gestureDwellStart = 0;
+      setGestureProgress(0);
+    }
+
+    function updateGestureHover() {
+      const target = document.elementFromPoint(gestureCursorX, gestureCursorY);
+      const interactive = target?.closest?.(".gesture-target:not(:disabled)") || null;
+      if (interactive === gestureHoveredCard) return;
+      clearGestureHover();
+      gestureHoveredCard = interactive;
+      gestureHoveredCard?.classList.add("is-gesture-hover");
+      if (gestureHoveredCard) gestureDwellStart = performance.now();
+    }
+
+    function setGestureProgress(ratio) {
+      const progress = Math.max(0, Math.min(1, ratio || 0));
+      gestureCursor.style.setProperty("--gesture-progress", `${progress * 360}deg`);
+      gestureCursor.style.setProperty("--gesture-progress-ratio", progress.toFixed(3));
+      app.dataset.gestureProgress = progress.toFixed(3);
+    }
+
+    function beginGestureCooldown(timestamp, command) {
+      gestureCooldownUntil = timestamp + GESTURE_COOLDOWN_MS;
+      app.dataset.lastGestureCommand = command;
+      app.dataset.gestureCooldown = "true";
+      gestureCursor.classList.add("is-cooling");
+      setGestureProgress(0);
+    }
+
+    function updateTrackedGesturePose(pose, timestamp) {
+      if (pose === trackedGesturePose) return;
+      trackedGesturePose = pose;
+      gesturePoseSince = timestamp;
+      gesturePoseLatched = false;
+      app.dataset.gesturePoseSince = String(Math.round(timestamp));
+    }
+
+    function activateGestureTarget(timestamp, method) {
+      if (!gestureHoveredCard || timestamp < gestureCooldownUntil) return false;
+      const target = gestureHoveredCard;
+      beginGestureCooldown(timestamp, method === "pinch" ? "捏合确认" : "驻留确认");
+      clearGestureHover();
+      target.click();
+      return true;
+    }
+
+    function updateGestureActivation(timestamp) {
+      const cooling = timestamp < gestureCooldownUntil;
+      app.dataset.gestureCooldown = String(cooling);
+      gestureCursor.classList.toggle("is-cooling", cooling);
+
+      if (pinchJustStarted) {
+        pinchJustStarted = false;
+        if (activateGestureTarget(timestamp, "pinch")) return;
+      }
+
+      if (!gestureHoveredCard || currentHandGesture !== "单指" || cooling) {
+        if (gestureHoveredCard && (currentHandGesture !== "单指" || cooling)) {
+          gestureDwellStart = timestamp;
+        }
+        setGestureProgress(0);
+        return;
+      }
+
+      const progress = (timestamp - gestureDwellStart) / DWELL_CONFIRM_MS;
+      setGestureProgress(progress);
+      if (progress >= 1) {
+        activateGestureTarget(timestamp, "dwell");
+      }
+    }
+
+    function resolveHeldPoseCommand(pose, heldFor) {
+      if (pose === "张手" && heldFor >= OPEN_HAND_HOLD_MS) return "shuffle";
+      if (pose === "握拳" && heldFor >= FIST_HOLD_MS) return "stop";
+      return null;
+    }
+
+    function resolveCaptureRecall(pose, heldFor) {
+      return pose === "张手" && heldFor >= RECALL_HOLD_MS;
+    }
+
+    function updatePoseCommands(timestamp) {
+      if (isHelpOpen) return;
+
+      if (captureSequenceActive) {
+        if (
+          capturePhase !== "waiting" ||
+          timestamp < gestureCooldownUntil ||
+          gesturePoseLatched
+        ) return;
+
+        const heldFor = timestamp - gesturePoseSince;
+        app.dataset.poseHoldDuration = String(Math.max(0, Math.round(heldFor)));
+        if (resolveCaptureRecall(currentHandGesture, heldFor)) {
+          gesturePoseLatched = true;
+          beginGestureCooldown(timestamp, "张手召回");
+          requestCardRecall("gesture");
+        }
+        return;
+      }
+
+      if (
+        !app.classList.contains("started") ||
+        isReadingOpen ||
+        timestamp < gestureCooldownUntil ||
+        gesturePoseLatched
+      ) return;
+
+      const heldFor = timestamp - gesturePoseSince;
+      app.dataset.poseHoldDuration = String(Math.max(0, Math.round(heldFor)));
+      const command = resolveHeldPoseCommand(currentHandGesture, heldFor);
+
+      if (command === "shuffle") {
+        gesturePoseLatched = true;
+        setShuffleMode(true);
+        beginGestureCooldown(timestamp, "张手洗牌");
+        showControlToast("张手指令 · 持续洗牌中");
+      } else if (command === "stop") {
+        gesturePoseLatched = true;
+        setShuffleMode(false);
+        beginGestureCooldown(timestamp, "握拳停止");
+        showControlToast("握拳指令 · 已恢复缓转");
+      }
+    }
+
+    function updateControlUi() {
+      const isGesture = controlMode === "gesture";
+      app.classList.toggle("gesture-mode", isGesture);
+      app.dataset.controlMode = controlMode;
+      app.dataset.rightHandLabelFilter = MEDIAPIPE_RIGHT_HAND_LABEL;
+      controlToggle.dataset.mode = controlMode;
+      controlToggle.setAttribute("aria-pressed", String(isGesture));
+      controlToggle.title = `当前：${isGesture ? "手势" : "鼠标"}控制`;
+
+      if (!isGesture) {
+        gestureCursor.classList.remove("is-visible");
+        gestureCursor.classList.remove("is-pinching", "is-cooling");
+        gesturePrompt.classList.remove("is-visible");
+        clearGestureHover();
+      }
+    }
+
+    function getHandednessLabel(handedness) {
+      return handedness?.label || handedness?.classification?.[0]?.label || "";
+    }
+
+    function getHandednessScore(handedness) {
+      return handedness?.score ?? handedness?.classification?.[0]?.score ?? 0;
+    }
+
+    function landmarkDistance(a, b) {
+      if (!a || !b) return 0;
+      return Math.hypot(
+        (a.x || 0) - (b.x || 0),
+        (a.y || 0) - (b.y || 0)
+      );
+    }
+
+    /**
+     * 使用单帧 MediaPipe Hands 关键点判断手部姿态。
+     * 只负责识别，不执行抽牌等交互，便于后续单独调整阈值。
+     */
+    function recognizeHandPose(landmarks) {
+      if (!Array.isArray(landmarks) || landmarks.length < 21) {
+        return {
+          gesture: "其它",
+          extendedCount: 0,
+          fingers: {},
+          palmFacingCamera: false,
+          metrics: null
+        };
+      }
+
+      const wrist = landmarks[0];
+      const fingers = {};
+
+      FINGER_LANDMARKS.forEach(({ name, tip, secondJoint }) => {
+        const tipDistance = landmarkDistance(landmarks[tip], wrist);
+        const jointDistance = landmarkDistance(landmarks[secondJoint], wrist);
+        fingers[name] = {
+          extended: tipDistance > jointDistance * FINGER_EXTENSION_RATIO,
+          tipDistance,
+          jointDistance
+        };
+      });
+
+      const extendedCount = Object.values(fingers)
+        .filter(finger => finger.extended).length;
+
+      // 掌宽：食指根(5) ↔ 小指根(17)；掌长：手腕(0) → 中指根(9)。
+      const palmWidth = landmarkDistance(landmarks[5], landmarks[17]);
+      const palmLength = landmarkDistance(wrist, landmarks[9]);
+      const palmWidthRatio = palmLength > .0001 ? palmWidth / palmLength : 0;
+
+      // MediaPipe 的 y 轴向下，数值更小代表关键点更靠上。
+      const middleBaseRise = wrist.y - landmarks[9].y;
+      const fingertipsPointUp = palmLength > .0001 &&
+        middleBaseRise > palmLength * FINGERTIPS_UP_RATIO_MIN;
+      const palmBroadEnough = palmWidthRatio >= PALM_WIDTH_RATIO_MIN;
+      const palmFacingCamera = palmBroadEnough && fingertipsPointUp;
+
+      let gesture = "其它";
+      if (extendedCount === 0) {
+        gesture = "握拳";
+      } else if (extendedCount === 1) {
+        gesture = "单指";
+      } else if (extendedCount === 5 && palmFacingCamera) {
+        gesture = "张手";
+      }
+
+      return {
+        gesture,
+        extendedCount,
+        fingers,
+        palmFacingCamera,
+        metrics: {
+          palmWidth,
+          palmLength,
+          palmWidthRatio,
+          palmBroadEnough,
+          middleBaseRise,
+          fingertipsPointUp
+        }
+      };
+    }
+
+    function recognizePinch(landmarks, handPose) {
+      if (!Array.isArray(landmarks) || landmarks.length < 21) {
+        return { isPinching: false, pinchDistance: 0, pinchRatio: 1 };
+      }
+      const palmLength = landmarkDistance(landmarks[0], landmarks[9]);
+      const pinchDistance = landmarkDistance(landmarks[4], landmarks[8]);
+      const pinchRatio = palmLength > .0001 ? pinchDistance / palmLength : 1;
+      return {
+        isPinching: handPose?.gesture !== "握拳" && pinchRatio <= PINCH_RATIO_MAX,
+        pinchDistance,
+        pinchRatio
+      };
+    }
+
+    function onHandResults(results) {
+      if (controlMode !== "gesture") return;
+
+      const landmarksList = results.multiHandLandmarks || [];
+      const handednessList = results.multiHandedness || [];
+      let rightHandIndex = -1;
+      let bestScore = -1;
+
+      for (let i = 0; i < handednessList.length; i += 1) {
+        if (getHandednessLabel(handednessList[i]) !== MEDIAPIPE_RIGHT_HAND_LABEL) continue;
+        const score = getHandednessScore(handednessList[i]);
+        if (score > bestScore && landmarksList[i]?.[8]) {
+          bestScore = score;
+          rightHandIndex = i;
+        }
+      }
+
+      if (rightHandIndex === -1) {
+        const missingAt = performance.now();
+        rightHandDetected = false;
+        currentHandGesture = "其它";
+        pinchActive = false;
+        pinchJustStarted = false;
+        updateTrackedGesturePose("其它", missingAt);
+        app.dataset.handDetected = "false";
+        app.dataset.handGesture = "none";
+        app.dataset.pinching = "false";
+        app.dataset.palmFacingCamera = "false";
+        return;
+      }
+
+      const rightHandLandmarks = landmarksList[rightHandIndex];
+      const handPose = recognizeHandPose(rightHandLandmarks);
+      const resultTime = performance.now();
+      currentHandGesture = handPose.gesture;
+      updateTrackedGesturePose(handPose.gesture, resultTime);
+      const pinch = recognizePinch(rightHandLandmarks, handPose);
+      const { isPinching, pinchRatio } = pinch;
+      pinchJustStarted = isPinching && !pinchActive;
+      pinchActive = isPinching;
+      const indexTip = rightHandLandmarks[8];
+      // 画面以镜像方式呈现，因此屏幕横坐标也要反转。
+      gestureTargetX = (1 - indexTip.x) * window.innerWidth;
+      gestureTargetY = indexTip.y * window.innerHeight;
+      rightHandDetected = true;
+      lastRightHandTime = resultTime;
+      app.dataset.handDetected = "true";
+      app.dataset.rawHandedness = getHandednessLabel(handednessList[rightHandIndex]);
+      app.dataset.handGesture = handPose.gesture;
+      app.dataset.extendedFingers = String(handPose.extendedCount);
+      app.dataset.palmFacingCamera = String(handPose.palmFacingCamera);
+      app.dataset.palmWidthRatio = handPose.metrics.palmWidthRatio.toFixed(3);
+      app.dataset.pinching = String(isPinching);
+      app.dataset.pinchRatio = pinchRatio.toFixed(3);
+      app.dataset.cursorTarget = `${Math.round(gestureTargetX)},${Math.round(gestureTargetY)}`;
+    }
+
+    function ensureMediaPipeHands() {
+      if (mediaPipeHands) return;
+      if (typeof window.Hands !== "function" || typeof window.Camera !== "function") {
+        throw new Error("MediaPipe CDN resources are unavailable");
+      }
+
+      mediaPipeHands = new window.Hands({
+        locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      mediaPipeHands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: .58,
+        minTrackingConfidence: .55
+      });
+      mediaPipeHands.onResults(onHandResults);
+    }
+
+    function stopCameraStream() {
+      gestureSession += 1;
+      cameraStarting = false;
+      cameraLive = false;
+      rightHandDetected = false;
+      currentHandGesture = "其它";
+      pinchActive = false;
+      pinchJustStarted = false;
+      updateTrackedGesturePose("其它", performance.now());
+      handFrameBusy = false;
+      app.dataset.cameraState = "stopped";
+      app.dataset.handDetected = "false";
+      app.dataset.handGesture = "none";
+      app.dataset.pinching = "false";
+      app.dataset.palmFacingCamera = "false";
+      cameraPreview.classList.remove("is-live");
+
+      if (cameraController?.stop) {
+        try {
+          const stopping = cameraController.stop();
+          stopping?.catch?.(() => {});
+        } catch (_) {
+          // 仍会在下方直接停止 MediaStream 轨道。
+        }
+      }
+      cameraController = null;
+
+      const stream = cameraPreview.srcObject;
+      stream?.getTracks?.().forEach(track => track.stop());
+      cameraPreview.srcObject = null;
+    }
+
+    function switchToMouseMode({ notify = true } = {}) {
+      stopCameraStream();
+      controlMode = "mouse";
+      updateControlUi();
+      if (notify) showControlToast("已切换为鼠标控制");
+    }
+
+    async function switchToGestureMode() {
+      if (cameraStarting || (controlMode === "gesture" && cameraLive)) return;
+
+      const session = ++gestureSession;
+      controlMode = "gesture";
+      cameraStarting = true;
+      cameraLive = false;
+      rightHandDetected = false;
+      lastRightHandTime = performance.now();
+      app.dataset.cameraState = "starting";
+      app.dataset.handDetected = "false";
+      updateControlUi();
+
+      try {
+        ensureMediaPipeHands();
+        cameraController = new window.Camera(cameraPreview, {
+          onFrame: async () => {
+            if (controlMode !== "gesture" || handFrameBusy || !mediaPipeHands) return;
+            handFrameBusy = true;
+            try {
+              await mediaPipeHands.send({ image: cameraPreview });
+            } catch (_) {
+              // 短暂丢帧不终止摄像头，下一帧继续识别。
+            } finally {
+              handFrameBusy = false;
+            }
+          },
+          width: 640,
+          height: 480
+        });
+
+        await cameraController.start();
+        if (session !== gestureSession || controlMode !== "gesture") {
+          stopCameraStream();
+          return;
+        }
+
+        cameraStarting = false;
+        cameraLive = true;
+        app.dataset.cameraState = "live";
+        cameraPreview.classList.add("is-live");
+        showControlToast("手势控制已开启 · 仅追踪右手");
+      } catch (_) {
+        if (session !== gestureSession) return;
+        stopCameraStream();
+        controlMode = "mouse";
+        app.dataset.cameraState = "unavailable";
+        updateControlUi();
+        showControlToast("摄像头不可用，已切换为鼠标模式", 3600);
+      }
+    }
+
+    function updateGestureCursor(timestamp) {
+      if (controlMode !== "gesture") return;
+
+      const handIsFresh = rightHandDetected && timestamp - lastRightHandTime <= HAND_MISSING_DELAY;
+      if (!handIsFresh) {
+        gestureCursor.classList.remove("is-visible");
+        gestureCursor.classList.remove("is-pinching");
+        clearGestureHover();
+        const shouldPrompt = cameraLive && timestamp - lastRightHandTime > HAND_MISSING_DELAY;
+        gesturePrompt.classList.toggle("is-visible", shouldPrompt);
+        return;
+      }
+
+      gestureCursorX += (gestureTargetX - gestureCursorX) * CURSOR_EASING;
+      gestureCursorY += (gestureTargetY - gestureCursorY) * CURSOR_EASING;
+      gestureCursor.style.transform =
+        `translate3d(${gestureCursorX}px, ${gestureCursorY}px, 0) translate(-50%, -50%)`;
+      gestureCursor.classList.add("is-visible");
+      gestureCursor.classList.toggle("is-pinching", pinchActive);
+      gesturePrompt.classList.remove("is-visible");
+      app.dataset.cursorPosition = `${Math.round(gestureCursorX)},${Math.round(gestureCursorY)}`;
+      updateGestureHover();
+      updatePoseCommands(timestamp);
+      updateGestureActivation(timestamp);
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const particles = [];
+    const particlePalette = ["#f7e7bc", "#d9b667", "#fff8e8", "#b994d2"];
+    const ambientTarget = () => {
+      if (prefersReducedMotion.matches) return 12;
+      return window.innerWidth <= 760 ? 28 : 54;
+    };
+    const maxParticles = () => prefersReducedMotion.matches ? 180 : (window.innerWidth <= 760 ? 520 : 780);
+
+    let particleFrame = 0;
+    let particleLastTime = 0;
+    let lastEdgeEmission = 0;
+    let particleTelemetryFrame = 0;
+    let edgeEmissionTotal = 0;
+    let canvasWidth = 0;
+    let canvasHeight = 0;
+
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function resizeParticleCanvas() {
+      // 柔光粒子使用 1× 像素即可，避免高 DPI 屏幕将填充面积放大四倍。
+      const pixelRatio = 1;
+      canvasWidth = window.innerWidth;
+      canvasHeight = window.innerHeight;
+      particleCanvas.width = Math.round(canvasWidth * pixelRatio);
+      particleCanvas.height = Math.round(canvasHeight * pixelRatio);
+      particleContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    }
+
+    function makeAmbientParticle(initial = false) {
+      return {
+        type: "ambient",
+        x: Math.random() * canvasWidth,
+        y: initial ? Math.random() * canvasHeight : canvasHeight + 8,
+        vx: randomBetween(-2.5, 2.5),
+        vy: randomBetween(-7, -2.5),
+        size: randomBetween(.45, 1.45),
+        alpha: randomBetween(.12, .45),
+        phase: Math.random() * Math.PI * 2,
+        twinkle: randomBetween(.7, 1.6),
+        color: particlePalette[Math.floor(Math.random() * 3)]
+      };
+    }
+
+    function fillAmbientParticles() {
+      const ambientCount = particles.reduce((count, particle) => count + (particle.type === "ambient" ? 1 : 0), 0);
+      for (let i = ambientCount; i < ambientTarget(); i += 1) {
+        particles.push(makeAmbientParticle(true));
+      }
+    }
+
+    function addTransientParticle(config) {
+      if (particles.length >= maxParticles()) return;
+      particles.push({
+        type: config.type,
+        x: config.x,
+        y: config.y,
+        vx: config.vx,
+        vy: config.vy,
+        life: config.life,
+        maxLife: config.life,
+        size: config.size,
+        drag: config.drag,
+        gravity: config.gravity,
+        color: config.color,
+        phase: Math.random() * Math.PI * 2,
+        twinkle: randomBetween(4, 9),
+        star: config.star
+      });
+    }
+
+    function emitBurst(x, y, requestedCount = 320, power = 5.2) {
+      const count = prefersReducedMotion.matches
+        ? Math.min(requestedCount, 70)
+        : Math.min(requestedCount, maxParticles() - particles.length);
+      particleCanvas.dataset.lastBurstCount = String(count);
+      particleCanvas.dataset.lastBurstOrigin = `${Math.round(x)},${Math.round(y)}`;
+
+      for (let i = 0; i < count; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = power * randomBetween(.22, 1.08) * 60;
+        addTransientParticle({
+          type: "burst",
+          x: x + randomBetween(-8, 8),
+          y: y + randomBetween(-8, 8),
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - randomBetween(6, 28),
+          life: randomBetween(.75, 1.75),
+          size: randomBetween(.7, 2.45),
+          drag: randomBetween(.965, .986),
+          gravity: randomBetween(14, 42),
+          color: particlePalette[Math.floor(Math.random() * particlePalette.length)],
+          star: Math.random() < .2
+        });
+      }
+    }
+
+    function emitRecallConvergence(requestedCount = 260) {
+      const count = prefersReducedMotion.matches
+        ? Math.min(requestedCount, 80)
+        : Math.min(requestedCount, maxParticles() - particles.length);
+      const centerX = canvasWidth / 2;
+      const centerY = canvasHeight / 2;
+      particleCanvas.dataset.lastRecallCount = String(count);
+      particleCanvas.dataset.lastRecallOrigin = "screen-edges";
+
+      for (let i = 0; i < count; i += 1) {
+        const side = Math.floor(Math.random() * 4);
+        let x;
+        let y;
+        if (side === 0) {
+          x = randomBetween(0, canvasWidth);
+          y = randomBetween(-24, 8);
+        } else if (side === 1) {
+          x = randomBetween(canvasWidth - 8, canvasWidth + 24);
+          y = randomBetween(0, canvasHeight);
+        } else if (side === 2) {
+          x = randomBetween(0, canvasWidth);
+          y = randomBetween(canvasHeight - 8, canvasHeight + 24);
+        } else {
+          x = randomBetween(-24, 8);
+          y = randomBetween(0, canvasHeight);
+        }
+
+        const duration = randomBetween(.3, .48);
+        const targetX = centerX + randomBetween(-22, 22);
+        const targetY = centerY + randomBetween(-30, 30);
+        addTransientParticle({
+          type: "recall",
+          x,
+          y,
+          vx: (targetX - x) / duration,
+          vy: (targetY - y) / duration,
+          life: duration,
+          size: randomBetween(.75, 2.35),
+          drag: randomBetween(.998, 1),
+          gravity: 0,
+          color: Math.random() < .7 ? "#f7e7bc" : "#fff8e8",
+          star: Math.random() < .24
+        });
+      }
+    }
+
+    function emitCardEdgeDust(timestamp) {
+      const interval = prefersReducedMotion.matches ? 190 : 48;
+      if (timestamp - lastEdgeEmission < interval) return;
+      lastEdgeEmission = timestamp;
+
+      const resultFrames = document.querySelectorAll(".result-card-frame");
+      const scene = resultFrames[Math.floor(Math.random() * resultFrames.length)];
+      if (!scene) return;
+      const rect = scene.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const count = prefersReducedMotion.matches ? 1 : 2;
+      edgeEmissionTotal += count;
+      for (let i = 0; i < count; i += 1) {
+        const side = Math.floor(Math.random() * 4);
+        let x;
+        let y;
+        let nx = 0;
+        let ny = 0;
+
+        if (side === 0 || side === 2) {
+          x = randomBetween(rect.left + 4, rect.right - 4);
+          y = side === 0 ? rect.top : rect.bottom;
+          ny = side === 0 ? -1 : 1;
+        } else {
+          x = side === 1 ? rect.right : rect.left;
+          y = randomBetween(rect.top + 4, rect.bottom - 4);
+          nx = side === 1 ? 1 : -1;
+        }
+
+        addTransientParticle({
+          type: "edge",
+          x,
+          y,
+          vx: nx * randomBetween(10, 36) + randomBetween(-12, 12),
+          vy: ny * randomBetween(8, 30) + randomBetween(-18, 4),
+          life: randomBetween(.65, 1.35),
+          size: randomBetween(.55, 1.65),
+          drag: .988,
+          gravity: -5,
+          color: Math.random() < .72 ? "#e8c878" : "#fff8e8",
+          star: Math.random() < .15
+        });
+      }
+    }
+
+    function emitCloseScatter() {
+      const scene = document.querySelector(".spread-results");
+      if (!scene) return;
+      const rect = scene.getBoundingClientRect();
+      const requestedCount = prefersReducedMotion.matches ? 28 : 96;
+      particleCanvas.dataset.lastCloseScatterCount = String(requestedCount);
+
+      for (let i = 0; i < requestedCount; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const radiusX = rect.width * randomBetween(.28, .54);
+        const radiusY = rect.height * randomBetween(.28, .52);
+        const x = rect.left + rect.width / 2 + Math.cos(angle) * radiusX;
+        const y = rect.top + rect.height / 2 + Math.sin(angle) * radiusY;
+        const speed = randomBetween(28, 108);
+        addTransientParticle({
+          type: "edge",
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - randomBetween(8, 30),
+          life: randomBetween(.55, 1.15),
+          size: randomBetween(.55, 1.8),
+          drag: .978,
+          gravity: 14,
+          color: particlePalette[Math.floor(Math.random() * 3)],
+          star: Math.random() < .16
+        });
+      }
+    }
+
+    function drawParticle(particle, timestamp) {
+      const isAmbient = particle.type === "ambient";
+      const lifeRatio = isAmbient ? 1 : Math.max(0, particle.life / particle.maxLife);
+      const twinkle = .68 + Math.sin(timestamp * .001 * particle.twinkle + particle.phase) * .32;
+      const alpha = (isAmbient ? particle.alpha : Math.min(1, lifeRatio * 1.6)) * twinkle;
+
+      particleContext.globalAlpha = alpha;
+      particleContext.fillStyle = particle.color;
+
+      if (particle.star) {
+        const radius = particle.size * (1 + (1 - lifeRatio) * .35);
+        particleContext.shadowColor = particle.color;
+        particleContext.shadowBlur = 7;
+        particleContext.beginPath();
+        particleContext.moveTo(particle.x, particle.y - radius * 2.2);
+        particleContext.lineTo(particle.x + radius * .52, particle.y - radius * .52);
+        particleContext.lineTo(particle.x + radius * 2.2, particle.y);
+        particleContext.lineTo(particle.x + radius * .52, particle.y + radius * .52);
+        particleContext.lineTo(particle.x, particle.y + radius * 2.2);
+        particleContext.lineTo(particle.x - radius * .52, particle.y + radius * .52);
+        particleContext.lineTo(particle.x - radius * 2.2, particle.y);
+        particleContext.lineTo(particle.x - radius * .52, particle.y - radius * .52);
+        particleContext.closePath();
+        particleContext.fill();
+        particleContext.shadowBlur = 0;
+      } else {
+        particleContext.beginPath();
+        particleContext.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        particleContext.fill();
+      }
+    }
+
+    function updateParticles(delta, timestamp) {
+      particleContext.clearRect(0, 0, canvasWidth, canvasHeight);
+      particleContext.globalCompositeOperation = "lighter";
+
+      if (isReadingOpen && resultOverlay.classList.contains("is-open")) {
+        emitCardEdgeDust(timestamp);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i -= 1) {
+        const particle = particles[i];
+
+        if (particle.type === "ambient") {
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          if (particle.y < -10 || particle.x < -10 || particle.x > canvasWidth + 10) {
+            Object.assign(particle, makeAmbientParticle(false));
+          }
+        } else {
+          particle.vx *= Math.pow(particle.drag, delta * 60);
+          particle.vy = particle.vy * Math.pow(particle.drag, delta * 60) + particle.gravity * delta;
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          particle.life -= delta;
+
+          if (particle.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+        }
+
+        if (!(captureSequenceActive && particle.type === "ambient")) {
+          drawParticle(particle, timestamp);
+        }
+      }
+
+      fillAmbientParticles();
+      particleTelemetryFrame += 1;
+      if (particleTelemetryFrame % 12 === 0) {
+        particleCanvas.dataset.particleCount = String(particles.length);
+        particleCanvas.dataset.effectMode = captureSequenceActive
+          ? capturePhase
+          : (isReadingOpen && resultOverlay.classList.contains("is-open") ? "card-edge" : "ambient");
+        particleCanvas.dataset.edgeEmissionCount = String(edgeEmissionTotal);
+      }
+      particleContext.globalAlpha = 1;
+      particleContext.globalCompositeOperation = "source-over";
+    }
+
+    function animateParticles(timestamp) {
+      const elapsed = particleLastTime ? (timestamp - particleLastTime) / 1000 : 0;
+      const delta = Math.min(elapsed, .033);
+      particleLastTime = timestamp;
+      updateGestureCursor(timestamp);
+      updateCarousel(timestamp);
+      updateParticles(delta, timestamp);
+      particleFrame = window.requestAnimationFrame(animateParticles);
+    }
+
+    function startParticleLoop() {
+      if (particleFrame || document.hidden) return;
+      particleLastTime = 0;
+      particleFrame = window.requestAnimationFrame(animateParticles);
+    }
+
+    function stopParticleLoop() {
+      if (!particleFrame) return;
+      window.cancelAnimationFrame(particleFrame);
+      particleFrame = 0;
+    }
+
+    resizeParticleCanvas();
+    fillAmbientParticles();
+    startParticleLoop();
+
+    // 为后续手势控制保留同一套粒子触发接口。
+    window.tarotParticleEffects = {
+      burstAt: emitBurst,
+      getParticleCount: () => particles.length
+    };
+
+    function shuffle(cards) {
+      const result = [...cards];
+      for (let i = result.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    function setCarouselRunning(running) {
+      carouselRunning = running;
+      if (!running) isShuffling = false;
+      app.dataset.carouselRunning = String(running);
+      app.dataset.shuffleActive = String(isShuffling);
+      shuffleToggleLabel.textContent = isShuffling ? "停止" : "洗牌";
+      shuffleToggle.title = isShuffling ? "停止洗牌并恢复缓转" : "开始持续洗牌";
+    }
+
+    function remapHiddenCards() {
+      const drawnNumbers = new Set(drawnCards.map(reading => reading.card.number));
+      const remainingCards = shuffle(majorArcana.filter(card => !drawnNumbers.has(card.number)));
+      const availableButtons = cardPool.querySelectorAll(".pool-card:not(.is-drawn)");
+      availableButtons.forEach((button, index) => {
+        const card = remainingCards[index];
+        if (card) button.dataset.cardNumber = String(card.number);
+      });
+      hiddenRemapCount += 1;
+      app.dataset.shuffleRemapCount = String(hiddenRemapCount);
+    }
+
+    function setShuffleMode(active) {
+      if (
+        !app.classList.contains("started") ||
+        isReadingOpen ||
+        isHelpOpen ||
+        (captureSequenceActive && active)
+      ) return;
+      carouselRunning = true;
+      isShuffling = Boolean(active);
+      app.dataset.carouselRunning = "true";
+      app.dataset.shuffleActive = String(isShuffling);
+      shuffleToggleLabel.textContent = isShuffling ? "停止" : "洗牌";
+      shuffleToggle.title = isShuffling ? "停止洗牌并恢复缓转" : "开始持续洗牌";
+      if (isShuffling) {
+        lastHiddenRemap = 0;
+        remapHiddenCards();
+      }
+    }
+
+    function attachImageFallbacks(scope = document) {
+      scope.querySelectorAll("img[data-fallback-id]").forEach(image => {
+        const fallback = document.getElementById(image.dataset.fallbackId);
+        image.addEventListener("load", () => {
+          image.hidden = false;
+          if (fallback) fallback.hidden = true;
+        }, { once: true });
+        image.addEventListener("error", () => {
+          image.hidden = true;
+          if (fallback) fallback.hidden = false;
+        }, { once: true });
+      });
+    }
+
+    function readingImageMarkup(reading, prefix) {
+      const id = `${prefix}-${reading.card.number}`;
+      const orientation = reading.isReversed ? "逆位" : "正位";
+      return `
+        <img
+          class="${reading.isReversed ? "is-reversed" : ""}"
+          src="${reading.card.image}"
+          alt="${reading.card.chineseName}${orientation}牌面"
+          data-fallback-id="${id}"
+        >
+        <span class="result-card-fallback" id="${id}" hidden>${reading.card.chineseName}</span>
+      `;
+    }
+
+    function renderSpreadSlots() {
+      const slots = spreadSlots.querySelectorAll(".spread-slot");
+      slots.forEach((slot, index) => {
+        const reading = drawnCards[index];
+        slot.classList.toggle("is-filled", Boolean(reading));
+        if (!reading) {
+          slot.innerHTML = `
+            <span class="slot-index">${["Ⅰ", "Ⅱ", "Ⅲ"][index]}</span>
+            <span class="slot-label">${spreadPositions[index]}</span>
+          `;
+          return;
+        }
+
+        const fallbackId = `slot-fallback-${index}`;
+        slot.innerHTML = `
+          <div class="slot-reading">
+            <div>
+              <img
+                class="${reading.isReversed ? "is-reversed" : ""}"
+                src="${reading.card.image}"
+                alt="${reading.card.chineseName}${reading.isReversed ? "逆位" : "正位"}缩略牌面"
+                data-fallback-id="${fallbackId}"
+              >
+              <span class="slot-mini-fallback" id="${fallbackId}" hidden>${reading.card.chineseName}</span>
+            </div>
+            <div>
+              <span class="slot-card-name">${reading.card.chineseName}</span>
+              <span class="slot-orientation">${reading.isReversed ? "逆位" : "正位"}</span>
+            </div>
+          </div>
+        `;
+      });
+      attachImageFallbacks(spreadSlots);
+    }
+
+    function renderCarousel() {
+      if (!app.classList.contains("started")) return;
+
+      const drawnNumbers = new Set(drawnCards.map(reading => reading.card.number));
+      cardPool.innerHTML = deck.map((card, index) => {
+        const isDrawn = drawnNumbers.has(card.number);
+        return `
+          <button
+            class="tarot-card pool-card gesture-target${isDrawn ? " is-drawn" : ""}"
+            type="button"
+            data-card-number="${card.number}"
+            data-ring-index="${index}"
+            aria-label="${isDrawn ? "已抽取" : "选择"}暗牌 ${index + 1}"
+            ${isDrawn ? "disabled" : ""}
+          ><span class="star" aria-hidden="true"></span></button>
+        `;
+      }).join("");
+      applyCardGlowDelays(cardPool);
+      updateCarousel(performance.now(), true);
+    }
+
+    function updateCarousel(timestamp, force = false) {
+      if (!app.classList.contains("started")) return;
+      const cards = cardPool.querySelectorAll(".pool-card");
+      if (!cards.length) return;
+
+      const elapsed = carouselLastTime ? Math.min(timestamp - carouselLastTime, 40) : 0;
+      carouselLastTime = timestamp;
+      const hovered = Boolean(
+        mouseHoveredCard ||
+        (gestureHoveredCard && gestureHoveredCard.classList.contains("pool-card")) ||
+        document.activeElement?.classList?.contains("pool-card")
+      );
+      const targetSpeed = carouselRunning
+        ? (
+          isShuffling
+            ? (prefersReducedMotion.matches ? .00012 : .00068)
+            : (hovered ? .000004 : (prefersReducedMotion.matches ? 0 : .000085))
+        )
+        : 0;
+      carouselSpeed += (targetSpeed - carouselSpeed) * (force ? 1 : .08);
+      carouselRotation += carouselSpeed * elapsed;
+
+      if (
+        isShuffling &&
+        !isReadingOpen &&
+        timestamp - lastHiddenRemap >= HIDDEN_REMAP_INTERVAL
+      ) {
+        lastHiddenRemap = timestamp;
+        remapHiddenCards();
+      }
+
+      const mobile = window.innerWidth <= 760;
+      const radiusX = mobile
+        ? Math.min(window.innerWidth * .53, 235)
+        : Math.min(window.innerWidth * .39, 610);
+      const radiusY = mobile ? 94 : Math.min(window.innerHeight * .18, 170);
+
+      cards.forEach((card, index) => {
+        const angle = carouselRotation + index / cards.length * Math.PI * 2;
+        const depth = (Math.cos(angle) + 1) / 2;
+        const isHovered =
+          card === mouseHoveredCard ||
+          card === gestureHoveredCard ||
+          card === document.activeElement;
+        const baseScale = (mobile ? .52 : .42) + depth * (mobile ? .64 : .72);
+        const visualScale = baseScale * (isHovered && !card.disabled ? 1.4 : 1);
+        const float = Math.sin(timestamp * .00125 + index * .78) * 4;
+        const x = Math.sin(angle) * radiusX;
+        const y = (1 - depth) * -radiusY + depth * radiusY * .34 + float - (isHovered ? 26 : 0);
+        const opacity = .18 + depth * .82;
+        const brightness = .38 + depth * .78 + (isHovered ? .28 : 0);
+
+        card.style.setProperty("--ring-x", `${x.toFixed(2)}px`);
+        card.style.setProperty("--ring-y", `${y.toFixed(2)}px`);
+        card.style.setProperty("--ring-scale", visualScale.toFixed(3));
+        card.style.setProperty("--ring-opacity", opacity.toFixed(3));
+        card.style.setProperty("--ring-brightness", brightness.toFixed(3));
+        card.style.setProperty("--ring-blur", `${((1 - depth) * .75).toFixed(2)}px`);
+        card.style.setProperty("--ring-z", String(isHovered ? 240 : Math.round(depth * 180)));
+      });
+    }
+
+    function renderResults() {
+      spreadResults.innerHTML = drawnCards.map((reading, index) => {
+        const keywords = reading.isReversed
+          ? reading.card.reversedKeywords
+          : reading.card.uprightKeywords;
+        return `
+          <article class="spread-result-card">
+            <p class="result-position">${spreadPositions[index]}</p>
+            <div class="result-card-frame">
+              ${readingImageMarkup(reading, `result-fallback-${index}`)}
+            </div>
+            <h3 class="result-card-name">${reading.card.chineseName}</h3>
+            <p class="result-orientation">${reading.isReversed ? "逆位" : "正位"}</p>
+            <p class="spread-result-keywords">${keywords.join(" · ")}</p>
+          </article>
+        `;
+      }).join("");
+      attachImageFallbacks(spreadResults);
+      renderReadingInterpretation();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[character]);
+    }
+
+    function resolveSynthesisGuidance(readings) {
+      const uprightCount = readings.filter(reading => !reading.isReversed).length;
+      if (uprightCount === 3) {
+        return {
+          type: "all-upright",
+          text: "三张牌全部正位，能量方向清晰而连贯。放胆推进，把已经看见的可能落实为行动。"
+        };
+      }
+      if (uprightCount === 0) {
+        return {
+          type: "all-reversed",
+          text: "三张牌全部逆位，阻力更多来自内在失衡或尚未完成的整理。先向内调整，暂缓用外在结果证明自己。"
+        };
+      }
+      if (!readings[2].isReversed) {
+        return {
+          type: "future-upright",
+          text: "未来牌正位，说明出口仍然敞开。处理好当下的课题，局势便会逐步明朗。"
+        };
+      }
+      return {
+        type: "future-reversed",
+        text: "未来牌逆位，眼下并非强行定局的时刻。放慢脚步、补足条件，等待更合适的时机。"
+      };
+    }
+
+    function formatQuestionOpening(question) {
+      return question
+        ? `你问：“${escapeHtml(question)}”`
+        : "你选择把疑惑留在心里，三张牌仍会回应此刻最需要被看见的部分。";
+    }
+
+    function renderReadingInterpretation() {
+      if (drawnCards.length !== 3) {
+        readingInterpretation.replaceChildren();
+        return;
+      }
+
+      const questionOpening = formatQuestionOpening(currentQuestion);
+      const positionSections = drawnCards.map((reading, index) => {
+        const orientation = reading.isReversed ? "逆位" : "正位";
+        const interpretation = reading.isReversed
+          ? reading.card.reversedInterpretation
+          : reading.card.uprightInterpretation;
+        return `
+          <section class="interpretation-position">
+            <h4>${spreadPositions[index]} · ${spreadPositionThemes[index]}</h4>
+            <p><strong>${reading.card.chineseName}（${orientation}）</strong>：${escapeHtml(interpretation)}</p>
+          </section>
+        `;
+      }).join("");
+      const synthesis = resolveSynthesisGuidance(drawnCards);
+
+      readingInterpretation.dataset.synthesisType = synthesis.type;
+      readingInterpretation.innerHTML = `
+        <h3 class="interpretation-heading">牌 阵 解 读</h3>
+        <p class="question-echo">${questionOpening}</p>
+        ${positionSections}
+        <p class="synthesis-guidance"><strong>综合指引：</strong>${synthesis.text}</p>
+        <p class="reading-disclaimer">塔罗映照的是当下的能量与心境，并非注定的结局——真正落子的人，始终是你自己。</p>
+      `;
+    }
+
+    function openSpreadResult() {
+      if (drawnCards.length !== 3) return;
+      isReadingOpen = true;
+      setCarouselRunning(false);
+      renderResults();
+      resultOverlay.classList.add("is-open");
+      resultOverlay.setAttribute("aria-hidden", "false");
+      restartReading.focus();
+    }
+
+    function setCapturePhase(phase) {
+      capturePhase = phase;
+      app.dataset.capturePhase = phase;
+      captureOverlay.classList.toggle("is-waiting", phase === "waiting");
+    }
+
+    function prepareCaptureCard(reading) {
+      const orientation = reading.isReversed ? "逆位" : "正位";
+      captureCard.classList.remove("is-visible");
+      captureCardImage.classList.toggle("is-reversed", reading.isReversed);
+      captureCardImage.alt = `${reading.card.chineseName}${orientation}牌面`;
+      captureCardImage.hidden = false;
+      captureCardFallback.hidden = true;
+      captureCardFallback.textContent = `${reading.card.chineseName}${reading.isReversed ? "（逆位）" : ""}`;
+      captureCardImage.onload = () => {
+        captureCardImage.hidden = false;
+        captureCardFallback.hidden = true;
+      };
+      captureCardImage.onerror = () => {
+        captureCardImage.hidden = true;
+        captureCardFallback.hidden = false;
+      };
+      captureCardImage.src = reading.card.image;
+    }
+
+    function finishCapturedReading(token) {
+      if (token !== captureSequenceToken || !pendingReading) return;
+      const { reading, sourceButton } = pendingReading;
+      drawnCards.push(reading);
+      sourceButton.classList.remove("is-capturing");
+      sourceButton.classList.add("is-drawn");
+      sourceButton.disabled = true;
+      renderSpreadSlots();
+      poolCount.textContent = `已抽 ${drawnCards.length} / 3`;
+      app.dataset.drawnCount = String(drawnCards.length);
+
+      const destination = spreadSlots.querySelectorAll(".spread-slot")[drawnCards.length - 1];
+      const destinationRect = destination?.getBoundingClientRect();
+      if (destinationRect) {
+        emitBurst(
+          destinationRect.left + destinationRect.width / 2,
+          destinationRect.top + destinationRect.height / 2,
+          72,
+          2.6
+        );
+      }
+
+      if (drawnCards.length < 3) {
+        guideText.dataset.activeGuide = `请选择「${spreadPositions[drawnCards.length]}」之牌`;
+      } else {
+        guideText.dataset.activeGuide = "三张命运之牌已经显现";
+      }
+
+      captureOverlay.classList.remove("is-open", "is-recalling", "is-waiting");
+      captureOverlay.setAttribute("aria-hidden", "true");
+      window.setTimeout(() => {
+        if (token !== captureSequenceToken) return;
+        captureCard.getAnimations().forEach(animation => animation.cancel());
+        captureCard.classList.remove("is-visible");
+        captureCard.removeAttribute("style");
+        app.classList.remove("capture-active");
+        captureSequenceActive = false;
+        app.dataset.captureActive = "false";
+        pendingReading = null;
+        setCapturePhase("idle");
+
+        if (drawnCards.length === 3) {
+          window.setTimeout(openSpreadResult, 180);
+        } else {
+          setCarouselRunning(true);
+        }
+      }, 270);
+    }
+
+    function returnCapturedCard(token) {
+      if (token !== captureSequenceToken || !pendingReading || capturePhase !== "revealed") return;
+      setCapturePhase("returning");
+      const slot = spreadSlots.querySelectorAll(".spread-slot")[drawnCards.length];
+      const cardRect = captureCard.getBoundingClientRect();
+      const slotRect = slot?.getBoundingClientRect();
+      const deltaX = slotRect
+        ? slotRect.left + slotRect.width / 2 - (cardRect.left + cardRect.width / 2)
+        : 0;
+      const deltaY = slotRect
+        ? slotRect.top + slotRect.height / 2 - (cardRect.top + cardRect.height / 2)
+        : -window.innerHeight * .38;
+
+      const animation = captureCard.animate([
+        { opacity: 1, transform: "translate(-50%, -50%) translate3d(0, 0, 0) scale(1)" },
+        {
+          opacity: .16,
+          transform: `translate(-50%, -50%) translate3d(${deltaX}px, ${deltaY}px, 0) scale(.18)`
+        }
+      ], {
+        duration: prefersReducedMotion.matches ? 1 : 360,
+        easing: "cubic-bezier(.58, .02, .76, .34)",
+        fill: "forwards"
+      });
+      animation.onfinish = () => finishCapturedReading(token);
+    }
+
+    function requestCardRecall(method = "mouse") {
+      if (!captureSequenceActive || capturePhase !== "waiting" || !pendingReading) return;
+      const token = captureSequenceToken;
+      setCapturePhase("gathering");
+      captureOverlay.classList.add("is-recalling");
+      app.dataset.lastRecallMethod = method;
+      emitRecallConvergence(268);
+
+      window.setTimeout(() => {
+        if (token !== captureSequenceToken || capturePhase !== "gathering") return;
+        setCapturePhase("revealed");
+        captureCard.classList.add("is-visible");
+        emitBurst(window.innerWidth / 2, window.innerHeight / 2, 48, 1.8);
+        window.setTimeout(() => returnCapturedCard(token), 900);
+      }, prefersReducedMotion.matches ? 20 : 290);
+    }
+
+    function startCaptureSequence(reading, sourceButton) {
+      if (captureSequenceActive) return;
+      const token = ++captureSequenceToken;
+      const sourceRect = sourceButton.getBoundingClientRect();
+      captureSequenceActive = true;
+      pendingReading = { reading, sourceButton };
+      setCapturePhase("flying");
+      app.classList.add("capture-active");
+      app.dataset.captureActive = "true";
+      setCarouselRunning(false);
+      clearGestureHover();
+      particles.splice(0, particles.length, ...particles.filter(particle => particle.type === "ambient"));
+      prepareCaptureCard(reading);
+
+      const flightCard = document.createElement("div");
+      flightCard.className = "tarot-card capture-flight-card";
+      flightCard.setAttribute("aria-hidden", "true");
+      flightCard.style.left = `${sourceRect.left}px`;
+      flightCard.style.top = `${sourceRect.top}px`;
+      flightCard.style.width = `${sourceRect.width}px`;
+      flightCard.style.height = `${sourceRect.height}px`;
+      flightCard.innerHTML = '<span class="star" aria-hidden="true"></span>';
+      cardFlightLayer.replaceChildren(flightCard);
+      sourceButton.classList.add("is-capturing");
+      sourceButton.disabled = true;
+
+      window.setTimeout(() => {
+        if (token !== captureSequenceToken) return;
+        captureOverlay.classList.add("is-open");
+        captureOverlay.setAttribute("aria-hidden", "false");
+      }, prefersReducedMotion.matches ? 1 : 360);
+
+      window.setTimeout(() => {
+        if (token !== captureSequenceToken) return;
+        cardFlightLayer.replaceChildren();
+        setCapturePhase("waiting");
+      }, prefersReducedMotion.matches ? 30 : 650);
+    }
+
+    function selectCard(card, sourceButton) {
+      if (
+        isReadingOpen ||
+        isHelpOpen ||
+        captureSequenceActive ||
+        drawnCards.length >= 3 ||
+        drawnCards.some(reading => reading.card.number === card.number)
+      ) return;
+
+      const reading = { card, isReversed: Math.random() < .5 };
+      startCaptureSequence(reading, sourceButton);
+    }
+
+    function shuffleCarousel() {
+      setShuffleMode(true);
+    }
+
+    function beginReading() {
+      closeHelp(false);
+      currentQuestion = questionInput.value.trim().slice(0, 40);
+      app.dataset.questionLength = String(currentQuestion.length);
+      captureSequenceToken += 1;
+      captureSequenceActive = false;
+      pendingReading = null;
+      captureCard.getAnimations().forEach(animation => animation.cancel());
+      captureCard.classList.remove("is-visible");
+      cardFlightLayer.replaceChildren();
+      captureOverlay.classList.remove("is-open", "is-recalling", "is-waiting");
+      captureOverlay.setAttribute("aria-hidden", "true");
+      app.classList.remove("capture-active");
+      app.dataset.captureActive = "false";
+      setCapturePhase("idle");
+      deck = shuffle(majorArcana);
+      drawnCards = [];
+      isReadingOpen = false;
+      carouselRotation = Math.random() * Math.PI * 2;
+      carouselSpeed = 0;
+      carouselLastTime = 0;
+      isShuffling = false;
+      lastHiddenRemap = 0;
+      hiddenRemapCount = 0;
+      app.classList.add("started");
+      app.dataset.drawnCount = "0";
+      guideText.dataset.activeGuide = "请选择「过去」之牌";
+      poolCount.textContent = "已抽 0 / 3";
+      resultOverlay.classList.remove("is-open");
+      resultOverlay.setAttribute("aria-hidden", "true");
+      renderSpreadSlots();
+      renderCarousel();
+      setCarouselRunning(true);
+      switchToGestureMode();
+    }
+
+    function restartSpread() {
+      emitCloseScatter();
+      resultOverlay.classList.remove("is-open");
+      resultOverlay.setAttribute("aria-hidden", "true");
+      clearGestureHover();
+      window.setTimeout(() => {
+        beginReading();
+        const firstCard = cardPool.querySelector(".pool-card:not(:disabled)");
+        firstCard?.focus();
+      }, 360);
+    }
+
+    function openHelp() {
+      if (captureSequenceActive || isReadingOpen || isHelpOpen) return;
+      helpLastFocus = document.activeElement;
+      isHelpOpen = true;
+      app.classList.add("help-open");
+      app.dataset.helpOpen = "true";
+      helpOverlay.classList.add("is-open");
+      helpOverlay.setAttribute("aria-hidden", "false");
+      helpButton.setAttribute("aria-expanded", "true");
+      clearGestureHover();
+      window.setTimeout(() => helpClose.focus({ preventScroll: true }), 0);
+    }
+
+    function closeHelp(restoreFocus = true) {
+      if (!isHelpOpen) return;
+      isHelpOpen = false;
+      app.classList.remove("help-open");
+      app.dataset.helpOpen = "false";
+      helpOverlay.classList.remove("is-open");
+      helpOverlay.setAttribute("aria-hidden", "true");
+      helpButton.setAttribute("aria-expanded", "false");
+      helpPanel.scrollTop = 0;
+      clearGestureHover();
+      if (restoreFocus) {
+        const focusTarget = helpLastFocus instanceof HTMLElement ? helpLastFocus : helpButton;
+        window.requestAnimationFrame(() => focusTarget.focus());
+      }
+      helpLastFocus = null;
+    }
+
+    startButton.addEventListener("click", beginReading);
+
+    helpButton.addEventListener("click", openHelp);
+    helpClose.addEventListener("click", () => closeHelp());
+    helpOverlay.addEventListener("click", event => {
+      if (event.target === helpOverlay) closeHelp();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && isHelpOpen) closeHelp();
+    });
+
+    questionInput.addEventListener("input", () => {
+      if (questionInput.value.length > 40) {
+        questionInput.value = questionInput.value.slice(0, 40);
+      }
+      questionCount.textContent = `${questionInput.value.length} / 40`;
+    });
+
+    cardPool.addEventListener("pointerover", event => {
+      if (captureSequenceActive) return;
+      const card = event.target.closest(".pool-card:not(:disabled)");
+      if (!card) return;
+      mouseHoveredCard = card;
+    });
+
+    cardPool.addEventListener("pointerout", event => {
+      const card = event.target.closest(".pool-card");
+      if (card && !card.contains(event.relatedTarget)) mouseHoveredCard = null;
+    });
+
+    cardPool.addEventListener("click", event => {
+      const selectedButton = event.target.closest(".pool-card:not(:disabled)");
+      if (!selectedButton || isReadingOpen || isHelpOpen || captureSequenceActive) return;
+      const selectedCard = deck.find(card => card.number === Number(selectedButton.dataset.cardNumber));
+      if (selectedCard) selectCard(selectedCard, selectedButton);
+    });
+
+    restartReading.addEventListener("click", restartSpread);
+
+    captureOverlay.addEventListener("click", () => {
+      if (controlMode === "mouse") requestCardRecall("mouse");
+    });
+
+    shuffleToggle.addEventListener("click", () => {
+      if (captureSequenceActive || isHelpOpen) return;
+      if (!app.classList.contains("started")) {
+        beginReading();
+      } else if (isShuffling) {
+        setShuffleMode(false);
+      } else {
+        shuffleCarousel();
+      }
+    });
+
+    controlToggle.addEventListener("click", () => {
+      if (controlMode === "gesture") {
+        switchToMouseMode();
+      } else {
+        switchToGestureMode();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      resizeParticleCanvas();
+      fillAmbientParticles();
+      gestureTargetX = Math.min(gestureTargetX, window.innerWidth);
+      gestureTargetY = Math.min(gestureTargetY, window.innerHeight);
+      carouselLastTime = 0;
+      updateCarousel(performance.now(), true);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopParticleLoop();
+      } else {
+        startParticleLoop();
+      }
+    });
+
+    prefersReducedMotion.addEventListener("change", () => {
+      while (particles.length > maxParticles()) particles.pop();
+      fillAmbientParticles();
+    });
+
+    window.addEventListener("beforeunload", stopCameraStream);
+
+    app.dataset.controlMode = "mouse";
+    app.dataset.cameraState = "idle";
+    app.dataset.handDetected = "false";
+    app.dataset.handGesture = "none";
+    app.dataset.palmFacingCamera = "false";
+    app.dataset.rightHandLabelFilter = MEDIAPIPE_RIGHT_HAND_LABEL;
+    app.dataset.carouselRunning = "false";
+    app.dataset.shuffleActive = "false";
+    app.dataset.shuffleRemapCount = "0";
+    app.dataset.drawnCount = "0";
+    app.dataset.gestureProgress = "0.000";
+    app.dataset.gestureCooldown = "false";
+    app.dataset.pinching = "false";
+    app.dataset.captureActive = "false";
+    app.dataset.capturePhase = "idle";
+    app.dataset.helpOpen = "false";
+    updateControlUi();
+
+    window.recognizeTarotHandPose = recognizeHandPose;
+    window.recognizeTarotPinch = recognizePinch;
+    window.resolveTarotPoseCommand = resolveHeldPoseCommand;
+    window.resolveTarotCaptureRecall = resolveCaptureRecall;
+    window.tarotGestureControl = {
+      setMode: mode => mode === "gesture" ? switchToGestureMode() : switchToMouseMode(),
+      getMode: () => controlMode,
+      getRightHandLabelFilter: () => MEDIAPIPE_RIGHT_HAND_LABEL,
+      getState: () => ({
+        gesture: currentHandGesture,
+        pinching: pinchActive,
+        shuffling: isShuffling,
+        cooldownUntil: gestureCooldownUntil,
+        hoveredTarget: gestureHoveredCard?.getAttribute("aria-label") || null
+      })
+    };
+  </script>
+</body>
+</html>
